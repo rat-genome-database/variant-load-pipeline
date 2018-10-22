@@ -13,9 +13,18 @@ set -e
 
 cd $APPHOME
 
+# loaded in Oct 2018
+#
 java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
     --tool ConservationScore \
-    --fileName /data/ref/phastCons100/hg38.phastCons100way.wig.gz \
-    --tableName CONSERVATION_SCORE_IOT_HG38 \
+    --fileName /ref/conservation_scores/rn6.phastCons20way.wigFix.gz \
+    --tableName CONSERVATION_SCORE_IOT_6 \
     --dataSourceName ConScore \
-    | tee "$WORKDIR/conscore_hg38.log"
+    | tee "$WORKDIR/conscore_rn6.log"
+
+#java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+#    --tool ConservationScore \
+#    --fileName /data/ref/phastCons100/hg38.phastCons100way.wig.gz \
+#    --tableName CONSERVATION_SCORE_IOT_HG38 \
+#    --dataSourceName ConScore \
+#    | tee "$WORKDIR/conscore_hg38.log"
