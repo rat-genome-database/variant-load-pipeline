@@ -1,5 +1,6 @@
 ﻿Dec 19, 2018
   clinvar module updated: table renamed from VARIANTS to CLINVAR
+  polyphen module: updated to new sequence API
 
 Oct 1, 2018
   moved from subversion to github

@@ -15,10 +15,8 @@ import java.sql.ResultSet;
 import java.util.*;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 11/20/13
- * Time: 1:25 PM
+ * @author mtutaj
+ * @since 11/20/13
  */
 public class Polyphen2 extends VariantProcessingBase {
 
@@ -177,13 +175,13 @@ public class Polyphen2 extends VariantProcessingBase {
                 String refSeqLeftPart;
                 String translatedLeftPart = fullRefAA.substring(0, fullRefAaaPos-1);
                 try {
-                    refSeqLeftPart = seq.getCloneSeq().substring(0, fullRefAaaPos-1);
+                    refSeqLeftPart = seq.getSeqData().substring(0, fullRefAaaPos-1);
                 } catch(IndexOutOfBoundsException e) {
                     line = "RefSeq protein shorter than REF_AA_POS!\n" +
                             "    transcript_rgd_id = " + transcriptRgdId + "\n" +
                             "    protein_acc_id = " + proteinAccId + "\n" +
                             "    ref_aa_pos = " + fullRefAaaPos + "\n" +
-                            "    RefSeq protein length = " + seq.getCloneSeq().length() + "\n";
+                            "    RefSeq protein length = " + seq.getSeqData().length() + "\n";
                     errorFile.append(line);
                     refSeqProteinLengthErrors++;
                     this.getLogWriter().append("***LEFT FLANK LENGTH ERROR***\n" + line);
@@ -209,13 +207,13 @@ public class Polyphen2 extends VariantProcessingBase {
                 if( translatedRightPart.endsWith("*") )
                     translatedRightPart = translatedRightPart.substring(0, translatedRightPart.length()-1);
                 try {
-                    refSeqRightPart = seq.getCloneSeq().substring(fullRefAaaPos);
+                    refSeqRightPart = seq.getSeqData().substring(fullRefAaaPos);
                 } catch(IndexOutOfBoundsException e) {
                     line = "RefSeq protein shorter than REF_AA_POS!\n" +
                             "    transcript_rgd_id = " + transcriptRgdId + "\n" +
                             "    protein_acc_id = " + proteinAccId + "\n" +
                             "    ref_aa_pos = " + fullRefAaaPos + "\n" +
-                            "    RefSeq protein length = " + seq.getCloneSeq().length() + "\n";
+                            "    RefSeq protein length = " + seq.getSeqData().length() + "\n";
                     errorFile.append(line);
                     refSeqProteinLengthErrors++;
                     this.getLogWriter().append("***RIGHT FLANK LENGTH ERROR***\n"+line);
@@ -250,7 +248,7 @@ public class Polyphen2 extends VariantProcessingBase {
                 line = variantId+"\t"+variantTranscriptId+"\t"+regionName+"\tRGD_"+proteinAccId+"\t"+fullRefAaaPos+"\t"+refAA+"\t"+varAA+"\t"+strand+"\t"+transcriptRgdId+"\n";
                 polyphenFileInfo.write(line);
 
-                writeFastaSequence("RGD_"+proteinAccId, seq.getCloneSeq());
+                writeFastaSequence("RGD_"+proteinAccId, seq.getSeqData());
             }
         }
 
@@ -268,18 +266,7 @@ public class Polyphen2 extends VariantProcessingBase {
     }
 
     List<Sequence> getProteinSequences(int transcriptRgdId) throws Exception {
-
-        List<Sequence> seqsInRgd = sequenceDAO.getObjectSequences(transcriptRgdId);
-        if( seqsInRgd != null ) {
-            // remove non-protein sequences
-            Iterator<Sequence> it = seqsInRgd.iterator();
-            while( it.hasNext() ) {
-                Sequence seq = it.next();
-                if( seq.getSeqTypeKey()!=12 )
-                    it.remove();
-            }
-        }
-        return seqsInRgd;
+        return sequenceDAO.getObjectSequences(transcriptRgdId, "ncbi_protein");
     }
 
     // ensure we write fasta sequences only once

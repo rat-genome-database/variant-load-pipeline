@@ -3,7 +3,7 @@ package edu.mcw.rgd.ratcn;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
 import edu.mcw.rgd.datamodel.Sample;
-import edu.mcw.rgd.datamodel.Sequence2;
+import edu.mcw.rgd.datamodel.Sequence;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
 
@@ -250,13 +250,13 @@ public class Polyphen extends VariantProcessingBase {
             }
 
             // retrieve protein sequence from RGD
-            List<Sequence2> seqsInRgd = getProteinSequences(transcriptRgdId);
+            List<Sequence> seqsInRgd = getProteinSequences(transcriptRgdId);
             if( seqsInRgd==null || seqsInRgd.isEmpty() ) {
                 proteinRefSeqNotInRgd++;
                 this.getLogWriter().append("***PROTEIN REFSEQ NOT IN RGD***\n");
             }
             else {
-                for( Sequence2 seq: seqsInRgd ) {
+                for( Sequence seq: seqsInRgd ) {
                     variantsProcessed++;
 
                     // RefSeq protein part to the left of the mutation point must match the translated part
@@ -368,10 +368,8 @@ public class Polyphen extends VariantProcessingBase {
         }
     }
 
-    List<Sequence2> getProteinSequences(int transcriptRgdId) throws Exception {
-
-        List<Sequence2> seqsInRgd = sequenceDAO.getObjectSequences2(transcriptRgdId, "ncbi_protein");
-        return seqsInRgd;
+    List<Sequence> getProteinSequences(int transcriptRgdId) throws Exception {
+        return sequenceDAO.getObjectSequences(transcriptRgdId, "ncbi_protein");
     }
 
     String getStrand(int rgdId, String chr, int pos, int mapKey) throws Exception {

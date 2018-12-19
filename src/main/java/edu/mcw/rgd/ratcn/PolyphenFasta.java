@@ -11,10 +11,8 @@ import java.io.*;
 import java.util.*;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 1/9/14
- * Time: 9:25 AM
+ * @author mtutaj
+ * @since 1/9/14
  * load the polyphen log file, find all proteins that have not been processed due to not being in the internal
  * protein database and generate fasta file for all that proteins
  */
@@ -136,11 +134,9 @@ public class PolyphenFasta extends VariantProcessingBase {
     public String getProteinSequence(String proteinAccId) throws Exception {
 
         for(Transcript transcript: transcriptDAO.getTranscriptsByProteinAccId(proteinAccId) ) {
-            for( Sequence seq: sequenceDAO.getObjectSequences(transcript.getRgdId()) ) {
+            for( Sequence seq: sequenceDAO.getObjectSequences(transcript.getRgdId(), "ncbi_protein") ) {
                 // process protein sequence
-                if( seq.getSeqTypeKey()==12 ) {
-                    return seq.getCloneSeq();
-                }
+                return seq.getSeqData();
             }
         }
         return null;
