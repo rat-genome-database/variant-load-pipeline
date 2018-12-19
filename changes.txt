@@ -1,24 +1,5 @@
-﻿
-COMMON FORMAT 2
----------------
-tab-separated file, with the following columns
- * 1. chr
- * 2. position
- * 3. ref nucleotide
- * 4. var nucleotide (allele) -- 1 allele per line
- * 5. rsId -- if available
- * 6. A count - count of occurrences of A genotype (AD field in VCF files)
- * 7. C count (AD field in VCF files)
- * 8. G count (AD field in VCF files)
- * 9. T count (AD field in VCF files)
- * 10. total_depth (DP field in VCF files)
- * 11. hgvs_name
- * 12. rgd_id
- * 13. allele count
-
-
-
-HISTORY OF CHANGES
+﻿Dec 19, 2018
+  clinvar module updated: table renamed from VARIANTS to CLINVAR
 
 Oct 1, 2018
   moved from subversion to github
@@ -33,84 +14,62 @@ May 16, 2018
 Oct 26, 2017
   varload: single nucleotide variants gor VARIANT_TYPE='snv'; previously it was 'snp'
 
-
 Aug 4, 2017
   added dbSnp2Vcf converter
-
 
 Jun 14, 2017
   Vcf8ColToCommonFormatLoader: added support for multiple input files
 
-
 Apr 13, 2017
   optimized variant loader to minimize nr of queries to database
-
 
 Apr 12, 2017
   updated converters to common format: implemented automatic chromosome conversion from refseq nucleotides to chromosome numbers
      f.e. 'NC_005100.4' --> '1'
 
-
 Nov 28, 2016
-------------
   updated VariantPostProcessing for ClinVar processing to use VARIANT_HUMAN and VARIANT_TRANSCRIPT_HUMAN tables
   updated VcfToCommonFormat2: dbSnpSource cmdline param is no longer needed since dbSnpSource will be derived from mapKey
 
-
 Oct 27, 2016
-------------
   updated ConservationScore loader
 
-
 Sep 7, 2016
-------------
   added ClinVar2Vcf Converter
 
 Jul 10, 2015
-------------
   added ConservationScoreLoader to load phastCons conservation scores for rn5
 
 Jan 26, 2015
-------------
   VcfToCommonFormat2Converter: new cmdline option --compressOutputFile
     if present, the output files are gzipped on the fly
 
 Nov 20, 2014
-------------
   VariantLoad3 optional parameter 'logFileName', so you can replace 'variantIlluminaLoad' with user-provided log name
 
 Nov 19, 2014
-------------
   VariantLoad3 fixed and optimized
 
 Nov 17, 2014
-------------
   VcfToCommonFormat2Converter: fix in computation of allele_count field for a variant with 2+ alleles
   VariantPostProcessing: fix in computing genic status
 
 Oct 10, 2014
-------------
   created Vcf8ColToCommonFormat2Converter to convert vcf files in 8-col format into common format 2
 
-
 Sep 17, 2014
-------------
-Polyphen: updated polyphen scripts
-
+  Polyphen: updated polyphen scripts
 
 Sep 16, 2014
-------------
-VcfToCommonFormat2Converter: created converter of VCF data to new common-format-2 (to simplify input data)
-VariantLoader3: merged code of VariantLoader2 & LoadZygosityDepth, input must be in common-format-2
-VariantPostProcessing: mapKey and dbSnpBuild are read directly from database (table SAMPLE)
-  instead of being passed via cmdline -- less chances for error
-
+  VcfToCommonFormat2Converter: created converter of VCF data to new common-format-2 (to simplify input data)
+  VariantLoader3: merged code of VariantLoader2 & LoadZygosityDepth, input must be in common-format-2
+  VariantPostProcessing: mapKey and dbSnpBuild are read directly from database (table SAMPLE)
+    instead of being passed via cmdline -- less chances for error
 
 Sep 10, 2014
-------------
-VariantLoader2: added cmdline parameter --verifyIfInRgd
-  default: false    variants are loaded as they are in incoming data, without verification
-  if true: incoming variant is inserted only if it is not in RGD
+  VariantLoader2: added cmdline parameter --verifyIfInRgd
+    default: false    variants are loaded as they are in incoming data, without verification
+    if true: incoming variant is inserted only if it is not in RGD
 
 
 Jan 15, 2014
@@ -137,8 +96,3 @@ Nov 13, 2013
 -------------------------
 finished code for the entire suite:
   conversion to common format, variant loading, zygosity computation, variant post processing
-
-
-
-TODO:
-update javadoc, so readme.txt file is included as main file for javadoc

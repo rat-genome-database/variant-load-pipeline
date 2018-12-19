@@ -7,6 +7,7 @@
 APPHOME=/home/rgddata/pipelines/ratStrainLoader
 LOG4J_INFO="-Dlog4j.configuration=file://$APPHOME/properties/log4j.properties"
 DBCONN_INFO="-Dspring.config=$APPHOME/../properties/default_db.xml -Djava.security.egd=file:/dev/../dev/urandom"
+JAVA_INFO="$DBCONN_INFO $LOG4J_INFO -jar lib/ratStrainLoader.jar"
 SERVER=`hostname -s | tr '[a-z]' '[A-Z]'`
 EMAIL_LIST=mtutaj@mcw.edu
 WORKDIR=$APPHOME/clinvar
@@ -23,12 +24,12 @@ cd $APPHOME
 if [[ $STAGE1 -eq 1 ]]; then
 echo "STAGE1: generate vcf files from ClinVar variants"
 
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool ClinVar2Vcf \
     --mapKey 17 --outputFile "$WORKDIR/ClinVar37.vcf.gz" \
     > "$WORKDIR/clinvar2vcf37.log" &
 
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool ClinVar2Vcf \
     --mapKey 38 --outputFile "$WORKDIR/ClinVar38.vcf.gz" \
     > "$WORKDIR/clinvar2vcf38.log" &
@@ -42,7 +43,7 @@ fi
 
 if [[ $STAGE2 -eq 1 ]]; then
   echo "STAGE2: convert vcf files to common format"
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VcfConverter2 \
     --mapKey 17 \
     --vcfFile "$WORKDIR/ClinVar37.vcf.gz" \
@@ -50,7 +51,7 @@ if [[ $STAGE2 -eq 1 ]]; then
     --compressOutputFile \
     > "$WORKDIR/vcf2txt37.log" &
 
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VcfConverter2 \
     --mapKey 38 \
     --vcfFile "$WORKDIR/ClinVar38.vcf.gz" \
@@ -65,13 +66,13 @@ fi
 
 if [[ $STAGE3 -eq 1 ]]; then
   echo "STAGE3: load ClinVar common format files into RATCN database"
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VariantLoad3 \
     --sampleId 1 --inputFile "$WORKDIR/ClinVar17.txt.gz" \
     --verifyIfInRgd \
     > "$WORKDIR/load37.log" &
 
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VariantLoad3 \
     --sampleId 2 --inputFile "$WORKDIR/ClinVar38.txt.gz" \
     --verifyIfInRgd \
@@ -85,13 +86,13 @@ fi
 
 if [[ $STAGE4 -eq 1 ]]; then
   echo "STAGE4: run variant post processing on loaded samples"
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --sampleId 1 --fastaDir "/data/ref/fasta/hs37" \
     --verifyIfInRgd \
     > "$WORKDIR/vpp37.log" &
 
-  java $DBCONN_INFO $LOG4J_INFO -jar ratStrainLoader.jar \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --sampleId 2 --fastaDir "/data/ref/fasta/hs38" \
     --verifyIfInRgd \
@@ -103,4 +104,4 @@ else
 fi
 
 
-echo "STAGE5: TODO: run polyphen"
+#echo "STAGE5: TODO: run polyphen"

@@ -16,10 +16,8 @@ import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 5/21/14
- * Time: 1:46 PM
+ * @author mtutaj
+ * @since 5/21/14
  * TODO
  * <ul>
  *     <li>cross-compare ClinVar positions on assembly 37 vs positions derived from gene symbol and preferred name</li>
@@ -76,11 +74,11 @@ public class ClinVar2Vcf {
 
         Connection conn = getDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(
-                "SELECT v.rgd_id,name,object_type \n" +
-                        "FROM variants v,genomic_elements ge\n" +
-                        "WHERE v.rgd_id=ge.rgd_id \n" +
-                        "AND object_type in('single nucleotide variant','deletion','insertion','duplication') " +
-                        "order by dbms_random.value");
+            "SELECT v.rgd_id,name,object_type \n" +
+            "FROM clinvar v,genomic_elements ge\n" +
+            "WHERE v.rgd_id=ge.rgd_id \n" +
+            "AND object_type in('single nucleotide variant','deletion','insertion','duplication') " +
+            "order by dbms_random.value");
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             Record r = new Record();
@@ -469,8 +467,8 @@ public class ClinVar2Vcf {
 
         Connection conn = getDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(
-                "SELECT hgvs_name,hgvs_name_type FROM hgvs_names WHERE rgd_id=? ORDER BY "+
-        "DECODE(hgvs_name_type,'genomic_refseqgene',1,'coding_refseq',2,'genomic_toplevel',3,'coding',4,5)");
+            "SELECT hgvs_name,hgvs_name_type FROM hgvs_names WHERE rgd_id=? ORDER BY "+
+            "DECODE(hgvs_name_type,'genomic_refseqgene',1,'coding_refseq',2,'genomic_toplevel',3,'coding',4,5)");
         ps.setInt(1, r.varRgdId);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
