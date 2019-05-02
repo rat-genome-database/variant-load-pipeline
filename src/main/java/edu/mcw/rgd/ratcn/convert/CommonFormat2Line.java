@@ -55,11 +55,11 @@ public class CommonFormat2Line {
         while( refNuc.length()>1 && varNuc.length()>0 ) {
             if( varNuc.length()>refNuc.length() ) {
                 // strip same nucleotides from the end
-                if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
-                    refNuc = refNuc.substring(0, refNuc.length()-1);
-                    varNuc = varNuc.substring(0, varNuc.length()-1);
-                }
-                else
+                //if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
+                //    refNuc = refNuc.substring(0, refNuc.length()-1);
+                //    varNuc = varNuc.substring(0, varNuc.length()-1);
+                //}
+                //else
                 if( refNuc.charAt(0)==varNuc.charAt(0) ) {
                     // strip first nucleotide from refNuc and varNuc
                     refNuc = refNuc.substring(1);
@@ -77,10 +77,10 @@ public class CommonFormat2Line {
                         refNuc = refNuc.substring(1);
                         varNuc = varNuc.substring(1);
                         pos++;
-                    } else if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
-                        // strip last nucleotide from refNuc and varNuc
-                        refNuc = refNuc.substring(0, refNuc.length()-1);
-                        varNuc = varNuc.substring(0, varNuc.length()-1);
+                    //} else if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
+                    //    // strip last nucleotide from refNuc and varNuc
+                    //    refNuc = refNuc.substring(0, refNuc.length()-1);
+                    //    varNuc = varNuc.substring(0, varNuc.length()-1);
                     } else {
                         // irregular deletion, f.e. AAG -> T
                         while( refNuc.length()>varNuc.length() ) {
