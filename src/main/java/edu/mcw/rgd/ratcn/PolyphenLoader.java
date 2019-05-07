@@ -1,5 +1,6 @@
 package edu.mcw.rgd.ratcn;
 
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -78,13 +79,9 @@ public class PolyphenLoader extends VariantProcessingBase {
 
     public void run(int sampleId, String chr) throws Exception {
 
-        if( sampleId<100 ) {
-            varTable = "VARIANT_HUMAN";
-            varTrTable = "VARIANT_TRANSCRIPT_HUMAN";
-        } else {
-            varTable = "VARIANT";
-            varTrTable = "VARIANT_TRANSCRIPT";
-        }
+        VariantDAO vdao = new VariantDAO();
+        varTable = vdao.getVariantTable(sampleId);
+        varTrTable = vdao.getVariantTranscriptTable(sampleId);
 
         if( this.getLogWriter()==null ) {
             String fileNameBase = getResultsDir() + "/" + sampleId + "." + chr;

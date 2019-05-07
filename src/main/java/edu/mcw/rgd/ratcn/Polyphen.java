@@ -2,6 +2,7 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
@@ -31,8 +32,8 @@ public class Polyphen extends VariantProcessingBase {
 
     SequenceDAO sequenceDAO = new SequenceDAO();
     SampleDAO sampleDAO = new SampleDAO();
-    String varTable = "VARIANT";
-    String varTrTable = "VARIANT_TRANSCRIPT";
+    VariantDAO variantDAO = new VariantDAO();
+
     boolean simpleProteinQC = false;
     boolean createFastaFile = false;
 
@@ -89,15 +90,10 @@ public class Polyphen extends VariantProcessingBase {
 
     public void run(int sampleId, String chr) throws Exception {
 
-        if( sampleId<100 ) {
-            varTable = "VARIANT_HUMAN";
-            varTrTable = "VARIANT_TRANSCRIPT_HUMAN";
-            simpleProteinQC = true;
-        } else {
-            varTable = "VARIANT";
-            varTrTable = "VARIANT_TRANSCRIPT";
-            simpleProteinQC = false;
-        }
+        String varTable = variantDAO.getVariantTable(sampleId);
+        String varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
+
+        simpleProteinQC = !varTable.equals("VARIANT");
 
         if( this.getLogWriter()==null ) {
             String fileNameBase = WORKING_DIR + "/" + sampleId + "." + chr;
@@ -136,6 +132,9 @@ public class Polyphen extends VariantProcessingBase {
     }
 
     public void runSample(int sampleId, int mapKey, String chr) throws Exception {
+
+        String varTable = variantDAO.getVariantTable(sampleId);
+        String varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
 
         int variantsProcessed = 0;
         int refSeqProteinLengthErrors = 0;

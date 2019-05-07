@@ -1,6 +1,7 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.SampleDAO;
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.process.FastaParser;
@@ -16,10 +17,8 @@ import java.util.*;
 import java.util.Date;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 8/8/13
- * Time: 1:39 PM
+ * @author mtutaj
+ * @since 8/8/13
  * Replaces original variant post processing code from carpenovo
  */
 public class VariantPostProcessing extends VariantProcessingBase {
@@ -29,6 +28,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String fastaDir;
     private String logDir;
     private boolean verifyIfInRgd = false;
+    private String varTable; // variant table name: VARIANT, VARIANT_CLINVAR etc
 
     private GeneCache geneCache = new GeneCache();
 
@@ -78,6 +78,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
     }
 
     void run(int sampleId, String chr) throws Exception {
+
+        VariantDAO vdao = new VariantDAO();
+        varTable = vdao.getVariantTable(sampleId);
 
         SampleDAO sampleDAO = new SampleDAO();
         sampleDAO.setDataSource(getDataSource());
@@ -763,7 +766,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     List<String> getChromosomes(int sampleId) throws Exception {
 
-        String sql = "SELECT DISTINCT chromosome FROM "+(sampleId<100?"variant_human":"variant")+" WHERE sample_id=? ";
+        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
         StringListQuery q = new StringListQuery(getDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.compile();
@@ -779,7 +782,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         System.out.println("preparing sql statements");
 
         String sql = "SELECT variant_id,start_pos,end_pos,var_nuc,ref_nuc "+
-                "FROM "+(sampleId<100?"variant_human":"variant")+
+                "FROM "+varTable+
                 " WHERE sample_id=? AND chromosome = ?";
         psVariant = getDataSource().getConnection().prepareStatement(sql);
 

@@ -1,6 +1,7 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
@@ -12,17 +13,13 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 11/15/13
- * Time: 12:35 PM
- * <p>
+ * @author mtutaj
+ * @since 11/15/13
  * convenience class for inserting variant_transcript rows in batches
  */
 public class VariantTranscriptBatch {
 
     public static final int BATCH_SIZE = 1000;
-    //public static final int BATCH_SIZE = 10000;
 
     // cache of records accumulated in the batch
     private List<VariantTranscript> batch = new ArrayList<>();
@@ -34,13 +31,9 @@ public class VariantTranscriptBatch {
     private String tableNameV;
 
     public VariantTranscriptBatch(int sampleId) {
-        if( sampleId<100 ) {
-            tableNameVT = "variant_transcript_human";
-            tableNameV = "variant_human";
-        } else {
-            tableNameVT = "variant_transcript";
-            tableNameV = "variant";
-        }
+        VariantDAO vdao = new VariantDAO();
+        tableNameVT = vdao.getVariantTranscriptTable(sampleId);
+        tableNameV = vdao.getVariantTable(sampleId);
     }
 
     public int getRowsCommitted() {
