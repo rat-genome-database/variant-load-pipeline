@@ -11,14 +11,10 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.*;
 import java.util.*;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 9/12/14
- * Time: 8:38 AM
- * <p>
+ * @author mtutaj
+ * @since 9/12/14
  * common format was 3 sets of tab delimited files as produced by early Illumina sequencers
  *   the drawback is that information is spread across 3 sets of files
  * common format 2 is a flat file format, designed by RGD
@@ -111,7 +107,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
     public void run() throws Exception {
 
-        BufferedReader reader = openInputFile(vcfFile);
+        BufferedReader reader = Utils.openReader(vcfFile);
         String line;
 
         // skip all header lines, starting with '##'
@@ -305,15 +301,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
                 alleleCount++;
         }
         return alleleCount;
-    }
-
-    BufferedReader openInputFile(String file) throws IOException {
-        if( file.endsWith(".gz") ) {
-            return new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
-        }
-        else {
-            return new BufferedReader(new FileReader(file));
-        }
     }
 
     int readADindex(String[] format) {

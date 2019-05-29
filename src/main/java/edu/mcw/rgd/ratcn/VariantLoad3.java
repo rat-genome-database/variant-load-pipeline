@@ -46,7 +46,6 @@ public class VariantLoad3 extends VariantProcessingBase {
     int dbSnpRowCount = 0;
     int novelRowCount = 0;
     int badVariants = 0; // 'variants' present in incoming data that had been called 0 times
-    int deletedBadVariants = 0;
 
     private MapDAO mapDAO = new MapDAO();
     private SampleDAO sampleDAO = new SampleDAO();
@@ -104,7 +103,6 @@ public class VariantLoad3 extends VariantProcessingBase {
     public void run(String sampleId, String inputFile) throws Exception {
 
         sample = sampleDAO.getSample(Integer.parseInt(sampleId));
-        initBadVariantsSql();
 
         System.out.println("OPTIONS:");
         System.out.println("  SampleId = "+sampleId);
@@ -121,8 +119,6 @@ public class VariantLoad3 extends VariantProcessingBase {
         rowsUpdated = 0;
         rowsAlreadyInRgd = 0;
         run(inputFile);
-
-        closeBadVariantsSql();
     }
 
     public void run(String inputFile) throws Exception {
@@ -139,17 +135,12 @@ public class VariantLoad3 extends VariantProcessingBase {
         processVariants(file);
         flushBatch();
 
-        flushBadVariants();
-
         System.out.println("Rows inserted: dbSnp="+dbSnpRowCount+", novel="+novelRowCount+", elapsed "+Utils.formatElapsedTime(timestamp1, System.currentTimeMillis()));
         this.insertSystemLogMessage("variantLoading", "Loaded "+(dbSnpRowCount+novelRowCount)+" variants for Sample "+sample.getId());
         if( badVariants>0 ) {
             String msg = "NOTE: "+badVariants+" variants skipped because they have been called 0 times!";
             System.out.println(msg);
             this.insertSystemLogMessage("variantLoading", msg += " - Sample "+sample.getId());
-        }
-        if( deletedBadVariants!=0 ) {
-            System.out.println("deletedBadVariants="+deletedBadVariants);
         }
 
         System.out.println("rowsInserted="+rowsInserted);
@@ -174,7 +165,6 @@ public class VariantLoad3 extends VariantProcessingBase {
         novelRowCount = 0;
         badVariants = 0;
         rowsAlreadyInRgd = 0;
-        deletedBadVariants = 0;
 
         // the file must has extension '.txt' or '.txt.gz'
         long rowsAlreadyInRgd0 = rowsAlreadyInRgd;
@@ -217,14 +207,18 @@ public class VariantLoad3 extends VariantProcessingBase {
         String chr = cols[0];
         int position = Integer.parseInt(cols[1]);
         String refSeq = cols[2]; // reference nucleotide for snvs (or ref sequence for indels)
-        if( !alleleIsValid(refSeq) ) {
-            System.out.println(" *** Ref Nucleotides must be A,C,G,T,N");
-            return;
-        }
         String varSeq = cols[3]; // variant nucleotide for snvs (or var sequence for indels)
-        if( !alleleIsValid(varSeq) ) {
-            System.out.println(" *** Var Nucleotides must be A,C,G,T,N");
-            return;
+        boolean isSnv = !Utils.isStringEmpty(refSeq) && !Utils.isStringEmpty(varSeq);
+
+        if( isSnv ) {
+            if (!alleleIsValid(refSeq)) {
+                System.out.println(" *** Ref Nucleotides must be A,C,G,T,N");
+                return;
+            }
+            if (!alleleIsValid(varSeq)) {
+                System.out.println(" *** Var Nucleotides must be A,C,G,T,N");
+                return;
+            }
         }
 
         // NOTE: for snvs, only ACGT counts are provided
@@ -235,12 +229,11 @@ public class VariantLoad3 extends VariantProcessingBase {
         int readCountC = parseInt(cols, 6);
         int readCountG = parseInt(cols, 7);
         int readCountT = parseInt(cols, 8);
-        boolean isSnp = refSeq.length()==1 && varSeq.length()==1 && !varSeq.equals("-");
 
         int totalDepth = 0;
         String totalDepthStr = cols[9];
         if( totalDepthStr==null || totalDepthStr.isEmpty() ) {
-            if( isSnp )
+            if( isSnv )
                 totalDepth = readCountA + readCountC + readCountG + readCountT;
             else
                 totalDepth = readDepth;
@@ -272,17 +265,30 @@ public class VariantLoad3 extends VariantProcessingBase {
             v.setRgdId(Integer.parseInt(varRgdId));
         v.setVariantType(determineVariantType(refSeq, varSeq));
         v.setGenicStatus(isGenic(sample.getMapKey(), chr, position)?"GENIC":"INTERGENIC");
+        if( !isSnv ) {
+            v.setPaddingBase(cols[15]);
+        }
 
-        // Determine the ending position based on the starting position and the genotype length ref_nuc
-        long endPos;
-        if( v.getReferenceNucleotide().equals("-") )
-            endPos = v.getStartPos();
-        else
-            endPos = v.getStartPos() + v.getReferenceNucleotide().length();
+        // Determine the ending position
+        long endPos = 0;
+        if( isSnv ) {
+            endPos = v.getStartPos() + 1;
+        } else {
+            // insertions
+            if( Utils.isStringEmpty(refSeq) ) {
+                endPos = v.getStartPos();
+            }
+            // deletions
+            else if( Utils.isStringEmpty(varSeq) ) {
+                endPos = v.getStartPos() + refSeq.length();
+            } else {
+                System.out.println("Unexpected var type");
+            }
+        }
         v.setEndPos(endPos);
 
         int score;
-        if( isSnp ) {
+        if( isSnv ) {
             score = zygosity.computeVariant(readCountA, readCountC, readCountG, readCountT, sample.getGender(), v);
         } else {
             // parameter tweaking for indels
@@ -309,8 +315,6 @@ public class VariantLoad3 extends VariantProcessingBase {
         }
         if( score==0 ) {
             badVariants++;
-
-            deletedBadVariants += deleteBadVariant(sample.getId(), chr, position, refSeq, varSeq);
             return;
         }
 
@@ -373,9 +377,10 @@ public class VariantLoad3 extends VariantProcessingBase {
 
         List<Variant> variantsInRgd = dao.getVariants(v.getSampleId(), v.getChromosome(), v.getStartPos(), v.getStartPos());
         for( Variant vInRgd: variantsInRgd ) {
-            if( vInRgd.getVariantNucleotide().equals(v.getVariantNucleotide())
-             && vInRgd.getReferenceNucleotide().equals(v.getReferenceNucleotide())
-             && vInRgd.getStartPos()==v.getStartPos() ) {
+            if( Utils.stringsAreEqual(vInRgd.getVariantNucleotide(), v.getVariantNucleotide())
+             && Utils.stringsAreEqual(vInRgd.getReferenceNucleotide(), v.getReferenceNucleotide())
+             && vInRgd.getStartPos()==v.getStartPos()
+             && vInRgd.getVariantType().equals(v.getVariantType()) ) {
 
                 if( vInRgd.getVariantFrequency()==v.getVariantFrequency()
                  && vInRgd.getQualityScore()==v.getQualityScore()
@@ -385,6 +390,7 @@ public class VariantLoad3 extends VariantProcessingBase {
                  && Utils.stringsAreEqual(vInRgd.getHgvsName(),v.getHgvsName())
                  && Utils.stringsAreEqual(vInRgd.getGenicStatus(),v.getGenicStatus())
                  && Math.abs(vInRgd.getZygosityPercentRead() - v.getZygosityPercentRead())<0.1
+                 && Utils.stringsAreEqual(vInRgd.getPaddingBase(),v.getPaddingBase())
                  && Utils.stringsAreEqual(vInRgd.getZygosityStatus(),v.getZygosityStatus())
                  && Utils.stringsAreEqual(vInRgd.getZygosityRefAllele(),v.getZygosityRefAllele())) {
                     this.rowsAlreadyInRgd++;
@@ -418,62 +424,14 @@ public class VariantLoad3 extends VariantProcessingBase {
         varBatch.clear();
     }
 
-    ///////////////////////////////////////
-    // bad variants
-    List<Long> arrayOfBadVariants = new ArrayList<Long>(1000);
-
-    PreparedStatement psBadVariants;
-    void initBadVariantsSql() throws Exception {
-
-        String sql = "SELECT variant_id FROM variant WHERE sample_id=? AND chromosome=? AND start_pos=? AND ref_nuc=? AND var_nuc=?";
-        psBadVariants = dao.getDataSource().getConnection().prepareStatement(sql);
-        psBadVariants.setInt(1, sample.getId());
-    }
-
-    void closeBadVariantsSql() throws Exception {
-        psBadVariants.close();
-    }
-
-    int deleteBadVariant(int sampleId, String chr, int pos, String refNuc, String varNuc) throws Exception {
-
-        // check if bad variant is in the database
-        int deleted = 0;
-        psBadVariants.setString(2, chr);
-        psBadVariants.setInt(3, pos);
-        psBadVariants.setString(4, refNuc);
-        psBadVariants.setString(5,varNuc);
-        ResultSet rs = psBadVariants.executeQuery();
-        if( rs.next() ) {
-            arrayOfBadVariants.add(rs.getLong(1));
-            deleted++;
-        }
-        rs.close();
-
-        if( arrayOfBadVariants.size()>= 1000 )
-            flushBadVariants();
-        return deleted;
-    }
-
-    void flushBadVariants() {
-        String sql = "UPDATE variant SET analyst_flag=sample_id,sample_id=999 WHERE variant_id=?";
-        BatchSqlUpdate su = new BatchSqlUpdate(dao.getDataSource(), sql, new int[]{Types.INTEGER}, 1000);
-        su.compile();
-        for (Long varId: arrayOfBadVariants) {
-            su.update(varId);
-        }
-        arrayOfBadVariants.clear();
-        mapDAO.executeBatch(su);
-    }
-
-
     String determineVariantType(String refSeq, String varSeq) {
 
         // handle insertions
-        if( refSeq.length()==1 && varSeq.length()>1 )
+        if( refSeq.length()==0 )
             return "ins";
 
         // handle deletions
-        if( varSeq.contains("-") )
+        if( varSeq.length()==0 )
             return "del";
 
         // handle snv

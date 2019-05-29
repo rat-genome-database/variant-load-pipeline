@@ -7,7 +7,6 @@ import edu.mcw.rgd.ratcn.fixup.*;
 /**
  * @author mtutaj
  * @since 11/13/13
- * <p>
  * wrapper class to run tools available in the suite
  */
 public class Manager {

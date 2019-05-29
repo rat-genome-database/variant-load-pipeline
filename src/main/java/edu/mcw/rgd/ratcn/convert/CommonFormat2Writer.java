@@ -10,11 +10,8 @@ import java.sql.ResultSet;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 10/30/14
- * Time: 9:50 AM
- * <p>
+ * @author mtutaj
+ * @since 10/30/14
  * encapsulates logic to write into a file in common-format-2
  */
 public class CommonFormat2Writer {
@@ -26,9 +23,6 @@ public class CommonFormat2Writer {
     private boolean appendToOutputFile;
 
     static private Connection conn;
-
-    public CommonFormat2Writer() {
-    }
 
     public CommonFormat2Writer(boolean compressOutputFile, boolean appendToOutputFile) {
         this.compressOutputFile = compressOutputFile;
@@ -60,7 +54,7 @@ public class CommonFormat2Writer {
 
         // write header
         if( writeHeader ) {
-            writer.write("#chr\tposition\tref nuc\tvar nuc\trsId\tA reads\tC reads\tG reads\tT reads\ttotal depth\thgvs name\trgd id\tallele depth\tallele count\tread depth\n");
+            writer.write("#chr\tposition\tref nuc\tvar nuc\trsId\tA reads\tC reads\tG reads\tT reads\ttotal depth\thgvs name\trgd id\tallele depth\tallele count\tread depth\tpadding base\n");
         }
     }
 
@@ -72,23 +66,29 @@ public class CommonFormat2Writer {
      */
     public void writeLine(CommonFormat2Line line) throws Exception {
 
-        if( line.getRsId()==null )
-            line.setRsId(getDbSnpRsId(line.getPos(), line.getChr()));
-
         if( !line.adjustForIndels() ) {
             return;
         }
 
+        if( line.getRsId()==null ) {
+            line.setRsId(getDbSnpRsId(line.getPos(), line.getChr()));
+        }
+
         writer.write(line.getChr()+"\t");
         writer.write(line.getPos()+"\t");
-        writer.write(line.getRefNuc()+"\t");
-        writer.write(line.getVarNuc()+"\t");
+        writer.write(Utils.defaultString(line.getRefNuc())+"\t");
+        writer.write(Utils.defaultString(line.getVarNuc())+"\t");
         writer.write(line.getRsId()+"\t");
 
-        writer.write(getInt(line.getCountA())+"\t");
-        writer.write(getInt(line.getCountC())+"\t");
-        writer.write(getInt(line.getCountG())+"\t");
-        writer.write(getInt(line.getCountT())+"\t");
+        // for indels, there are no ACGT counts
+        if( line.getRefNuc()==null || line.getVarNuc()==null ) {
+            writer.write("\t\t\t\t");
+        } else {
+            writer.write(getInt(line.getCountA()) + "\t");
+            writer.write(getInt(line.getCountC()) + "\t");
+            writer.write(getInt(line.getCountG()) + "\t");
+            writer.write(getInt(line.getCountT()) + "\t");
+        }
 
         writer.write(getInt(line.getTotalDepth())+"\t");
 
@@ -96,8 +96,8 @@ public class CommonFormat2Writer {
         writer.write(getInt(line.getRgdId())+"\t");
         writer.write(getInt(line.getAlleleDepth())+"\t");
         writer.write(getInt(line.getAlleleCount())+"\t");
-        writer.write(getInt(line.getReadDepth()));
-        writer.newLine();
+        writer.write(getInt(line.getReadDepth())+"\t");
+        writer.write(Utils.defaultString(line.getPaddingBase())+"\n");
     }
 
     String getInt(Integer i) {

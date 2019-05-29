@@ -1,11 +1,8 @@
 package edu.mcw.rgd.ratcn.convert;
 
 /**
- * Created by IntelliJ IDEA.
- * User: mtutaj
- * Date: 10/30/14
- * Time: 9:51 AM
- * <p>
+ * @author mtutaj
+ * @since 10/30/14
  * represents a line to be written into a file in common-format-2
  * <p>
  * columns of common format 2:
@@ -24,6 +21,7 @@ package edu.mcw.rgd.ratcn.convert;
  * 13. allele_depth (AD field: how many reads were called for this allele)
  * 14. allele_count (count of all alleles at this position)
  * 15. read_depth (sum of allele depths for all alleles; sum of values of AD field)
+ * 16. padding_base (if available in incoming data, usually for indels from data submitted in VCF format)
  *
  * Note: especially for indels it is common to see lines like that:
  * ref:G, alleles:GT,GTT     GT:AD:DP:GQ:PL      0/2:3,2,7:16:52:260,139,174,0,52,74
@@ -50,8 +48,48 @@ public class CommonFormat2Line {
     private Integer alleleDepth;
     private Integer alleleCount;
     private Integer readDepth;
+    private String paddingBase;
 
+    // return true if adjustement was successful
     public boolean adjustForIndels() {
+        // snv
+        if( refNuc.length()==1 && varNuc.length()==1 ) {
+            return true;
+        }
+        // insertion
+        if( refNuc.length()==1 && varNuc.length()>1 ) {
+            // varNuc first base must be the same as refNuc
+            if( refNuc.charAt(0)!=varNuc.charAt(0) ) {
+                System.out.println("Unexpected: insertion: missing padding base");
+                return false;
+            }
+            // handle padding base
+            setPaddingBase(refNuc);
+            setRefNuc(null);
+            setVarNuc(varNuc.substring(1));
+            pos++;
+            return true;
+        }
+        // deletion
+        if( refNuc.length()>1 && varNuc.length()==1 ) {
+            // varNuc first base must be the same as refNuc
+            if( refNuc.charAt(0)!=varNuc.charAt(0) ) {
+                System.out.println("Unexpected: deletion: missing padding base");
+                return false;
+            }
+            // handle padding base
+            setPaddingBase(varNuc);
+            setVarNuc(null);
+            setRefNuc(refNuc.substring(1));
+            pos++;
+            return true;
+        }
+        // unhandled case
+        System.out.println("TODO");
+        return false;
+    }
+
+    public boolean old_adjustForIndels() {
         while( refNuc.length()>1 && varNuc.length()>0 ) {
             if( varNuc.length()>refNuc.length() ) {
                 // strip same nucleotides from the end
@@ -77,10 +115,10 @@ public class CommonFormat2Line {
                         refNuc = refNuc.substring(1);
                         varNuc = varNuc.substring(1);
                         pos++;
-                    //} else if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
-                    //    // strip last nucleotide from refNuc and varNuc
-                    //    refNuc = refNuc.substring(0, refNuc.length()-1);
-                    //    varNuc = varNuc.substring(0, varNuc.length()-1);
+                        //} else if( refNuc.charAt(refNuc.length()-1)==varNuc.charAt(varNuc.length()-1) ) {
+                        //    // strip last nucleotide from refNuc and varNuc
+                        //    refNuc = refNuc.substring(0, refNuc.length()-1);
+                        //    varNuc = varNuc.substring(0, varNuc.length()-1);
                     } else {
                         // irregular deletion, f.e. AAG -> T
                         while( refNuc.length()>varNuc.length() ) {
@@ -217,5 +255,13 @@ public class CommonFormat2Line {
 
     public void setReadDepth(Integer readDepth) {
         this.readDepth = readDepth;
+    }
+
+    public String getPaddingBase() {
+        return paddingBase;
+    }
+
+    public void setPaddingBase(String paddingBase) {
+        this.paddingBase = paddingBase;
     }
 }
