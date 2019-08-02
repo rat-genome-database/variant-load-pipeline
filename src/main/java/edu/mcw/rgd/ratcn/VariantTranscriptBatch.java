@@ -115,11 +115,11 @@ public class VariantTranscriptBatch {
             return;
 
         BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
-                "INSERT INTO \"+tableNameVT" +
-                "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA," +
+                "INSERT INTO "+tableNameVT+ " (\n" +
+                "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
                 "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA, FULL_REF_NUC, FRAMESHIFT)\n" +
-                "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?," +
+                "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?,\n" +
                 " ?, ?, ?, ?,\n" +
                 "?,?,?,?,?,?)",
                 new int[]{Types.INTEGER, Types.INTEGER, Types.VARCHAR,
