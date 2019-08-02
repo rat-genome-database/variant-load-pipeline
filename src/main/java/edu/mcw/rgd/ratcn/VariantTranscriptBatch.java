@@ -5,6 +5,7 @@ import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
+import org.springframework.jdbc.object.BatchSqlUpdate;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -113,9 +114,23 @@ public class VariantTranscriptBatch {
         if( batch.isEmpty() )
             return;
 
-        List batchArgs = new ArrayList(batch.size());
+        BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+                "INSERT INTO \"+tableNameVT" +
+                "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA," +
+                "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
+                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA, FULL_REF_NUC, FRAMESHIFT)\n" +
+                "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?," +
+                " ?, ?, ?, ?,\n" +
+                "?,?,?,?,?,?)",
+                new int[]{Types.INTEGER, Types.INTEGER, Types.VARCHAR,
+                        Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                        Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR
+                },10000);
+
+        bsu.compile();
+
         for( VariantTranscript vt: batch ) {
-            batchArgs.add(new Object[]{
+           bsu.update(
                 vt.getVariantId(),
                 vt.getTranscriptRgdId(),
                 vt.getRefAA(),
@@ -129,15 +144,10 @@ public class VariantTranscriptBatch {
                 vt.getFullRefAA(),
                 vt.getFullRefNuc(),
                 vt.getFrameShift()
-            });
+            );
         }
-        String sql = "INSERT INTO "+tableNameVT+" \n"+
-                "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA, VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE, "+
-                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA, FULL_REF_NUC, FRAMESHIFT) "+
-                "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?, ?, ?, ?, ?, "+
-                "?,?,?,?,?,?)";
-        new JdbcTemplate(DataSourceFactory.getInstance().getCarpeNovoDataSource())
-            .batchUpdate(sql, batchArgs);
+
+        bsu.flush();
     }
 
     void insertRowsWithVerify() throws Exception {
