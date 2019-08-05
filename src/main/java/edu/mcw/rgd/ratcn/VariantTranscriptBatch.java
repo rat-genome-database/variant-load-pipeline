@@ -1,5 +1,6 @@
 package edu.mcw.rgd.ratcn;
 
+
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
@@ -7,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
 
+import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -114,7 +116,7 @@ public class VariantTranscriptBatch {
         if( batch.isEmpty() )
             return;
 
-        BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+  /*      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
                 "INSERT INTO "+tableNameVT+ "\n" +
                 "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
@@ -128,9 +130,36 @@ public class VariantTranscriptBatch {
                 },10000);
 
         bsu.compile();
-
+    */    FileWriter csvWriter = new FileWriter("transcript.csv");
         for( VariantTranscript vt: batch ) {
-           bsu.update(
+
+     csvWriter.append(Long.toString(vt.getVariantId()));
+     csvWriter.append(",");
+            csvWriter.append(Long.toString(vt.getTranscriptRgdId()));
+            csvWriter.append(",");
+            csvWriter.append(vt.getRefAA());
+            csvWriter.append(",");
+            csvWriter.append(vt.getVarAA());
+            csvWriter.append(",");
+            csvWriter.append(vt.getSynStatus());
+            csvWriter.append(",");
+            csvWriter.append(vt.getLocationName());
+            csvWriter.append(",");
+            csvWriter.append(vt.getNearSpliceSite());
+            csvWriter.append(",");
+            csvWriter.append(Long.toString(vt.getFullRefAAPos()));
+            csvWriter.append(",");
+            csvWriter.append(Long.toString(vt.getFullRefNucPos()));
+            csvWriter.append(",");
+            csvWriter.append(vt.getTripletError());
+            csvWriter.append(",");
+            csvWriter.append(vt.getFullRefAA());
+            csvWriter.append(",");
+            csvWriter.append(vt.getFullRefNuc());
+            csvWriter.append(",");
+            csvWriter.append(vt.getFrameShift());
+            csvWriter.append("\n");
+            /*      bsu.update(
                 vt.getVariantId(),
                 vt.getTranscriptRgdId(),
                 vt.getRefAA(),
@@ -145,9 +174,11 @@ public class VariantTranscriptBatch {
                 vt.getFullRefNuc(),
                 vt.getFrameShift()
             );
+    */
+
         }
 
-        bsu.flush();
+    //    bsu.flush();
     }
 
     void insertRowsWithVerify() throws Exception {
