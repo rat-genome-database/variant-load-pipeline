@@ -32,7 +32,7 @@ public class VariantTranscriptBatch {
     private boolean verifyIfInRgd = false;
     private String tableNameVT;
     private String tableNameV;
-    FileWriter csvWriter;
+
     public VariantTranscriptBatch(int sampleId) {
         VariantDAO vdao = new VariantDAO();
         tableNameVT = vdao.getVariantTranscriptTable(sampleId);
@@ -54,7 +54,6 @@ public class VariantTranscriptBatch {
                 "WHERE EXISTS(SELECT 1 FROM "+tableNameV+" v WHERE v.variant_id=vt.variant_id AND v.sample_id=? AND chromosome=?)";
 
         vtData = new HashMap();
-csvWriter  = new FileWriter("transcript.csv");
         Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, sampleId);
@@ -116,7 +115,7 @@ csvWriter  = new FileWriter("transcript.csv");
         if( batch.isEmpty() )
             return;
 
-  /*      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
                 "INSERT INTO "+tableNameVT+ "\n" +
                 "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
@@ -130,36 +129,10 @@ csvWriter  = new FileWriter("transcript.csv");
                 },10000);
 
         bsu.compile();
-    */
+
         for( VariantTranscript vt: batch ) {
 
-     csvWriter.append(String.valueOf(vt.getVariantId()));
-     csvWriter.append(",");
-            csvWriter.append(String.valueOf(vt.getTranscriptRgdId()));
-            csvWriter.append(",");
-            csvWriter.append(vt.getRefAA());
-            csvWriter.append(",");
-            csvWriter.append(vt.getVarAA());
-            csvWriter.append(",");
-            csvWriter.append(vt.getSynStatus());
-            csvWriter.append(",");
-            csvWriter.append(vt.getLocationName());
-            csvWriter.append(",");
-            csvWriter.append(vt.getNearSpliceSite());
-            csvWriter.append(",");
-            csvWriter.append(String.valueOf(vt.getFullRefAAPos()));
-            csvWriter.append(",");
-            csvWriter.append(String.valueOf(vt.getFullRefNucPos()));
-            csvWriter.append(",");
-            csvWriter.append(vt.getTripletError());
-            csvWriter.append(",");
-            csvWriter.append(vt.getFullRefAA());
-            csvWriter.append(",");
-            csvWriter.append(vt.getFullRefNuc());
-            csvWriter.append(",");
-            csvWriter.append(vt.getFrameShift());
-            csvWriter.append("\n");
-            /*      bsu.update(
+           bsu.update(
                 vt.getVariantId(),
                 vt.getTranscriptRgdId(),
                 vt.getRefAA(),
@@ -174,11 +147,11 @@ csvWriter  = new FileWriter("transcript.csv");
                 vt.getFullRefNuc(),
                 vt.getFrameShift()
             );
-    */
+
 
         }
 
-    //    bsu.flush();
+       bsu.flush();
     }
 
     void insertRowsWithVerify() throws Exception {
