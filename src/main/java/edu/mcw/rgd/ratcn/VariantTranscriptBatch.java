@@ -32,7 +32,7 @@ public class VariantTranscriptBatch {
     private boolean verifyIfInRgd = false;
     private String tableNameVT;
     private String tableNameV;
-
+    FileWriter csvWriter;
     public VariantTranscriptBatch(int sampleId) {
         VariantDAO vdao = new VariantDAO();
         tableNameVT = vdao.getVariantTranscriptTable(sampleId);
@@ -54,7 +54,7 @@ public class VariantTranscriptBatch {
                 "WHERE EXISTS(SELECT 1 FROM "+tableNameV+" v WHERE v.variant_id=vt.variant_id AND v.sample_id=? AND chromosome=?)";
 
         vtData = new HashMap();
-
+csvWriter  = new FileWriter("transcript.csv");
         Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, sampleId);
@@ -130,7 +130,7 @@ public class VariantTranscriptBatch {
                 },10000);
 
         bsu.compile();
-    */    FileWriter csvWriter = new FileWriter("transcript.csv");
+    */
         for( VariantTranscript vt: batch ) {
 
      csvWriter.append(Long.toString(vt.getVariantId()));
