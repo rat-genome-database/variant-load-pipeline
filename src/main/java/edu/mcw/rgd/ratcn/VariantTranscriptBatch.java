@@ -133,9 +133,9 @@ csvWriter  = new FileWriter("transcript.csv");
     */
         for( VariantTranscript vt: batch ) {
 
-     csvWriter.append(Long.toString(vt.getVariantId()));
+     csvWriter.append(String.valueOf(vt.getVariantId()));
      csvWriter.append(",");
-            csvWriter.append(Long.toString(vt.getTranscriptRgdId()));
+            csvWriter.append(String.valueOf(vt.getTranscriptRgdId()));
             csvWriter.append(",");
             csvWriter.append(vt.getRefAA());
             csvWriter.append(",");
@@ -147,9 +147,9 @@ csvWriter  = new FileWriter("transcript.csv");
             csvWriter.append(",");
             csvWriter.append(vt.getNearSpliceSite());
             csvWriter.append(",");
-            csvWriter.append(Long.toString(vt.getFullRefAAPos()));
+            csvWriter.append(String.valueOf(vt.getFullRefAAPos()));
             csvWriter.append(",");
-            csvWriter.append(Long.toString(vt.getFullRefNucPos()));
+            csvWriter.append(String.valueOf(vt.getFullRefNucPos()));
             csvWriter.append(",");
             csvWriter.append(vt.getTripletError());
             csvWriter.append(",");
