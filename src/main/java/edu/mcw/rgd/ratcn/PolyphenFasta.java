@@ -2,12 +2,16 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.SequenceDAO;
 import edu.mcw.rgd.dao.impl.TranscriptDAO;
+import edu.mcw.rgd.dao.impl.VariantDAO;
+import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.datamodel.Transcript;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.jdbc.core.SqlParameter;
 
 import java.io.*;
+import java.sql.Types;
 import java.util.*;
 
 /**
@@ -22,6 +26,7 @@ public class PolyphenFasta extends VariantProcessingBase {
     private String resultsDir;
     private String outputDir;
 
+    String varTable = "VARIANT";
     private TranscriptDAO transcriptDAO = new TranscriptDAO();
     private SequenceDAO sequenceDAO = new SequenceDAO();
 
@@ -56,13 +61,28 @@ public class PolyphenFasta extends VariantProcessingBase {
         String fileNameBase = instance.getResultsDir() + "/" + sampleId +"." + chr;
         instance.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".fasta.log")));
 
-        instance.run(sampleId, chr);
+        if( chr==null )
+            instance.run(sampleId);
+        else
+            instance.run(sampleId, chr);
+
 
         instance.getLogWriter().close();
+    }
+    public void run(int sampleId) throws Exception {
+
+        List<String> chromosomes = getChromosomes(sampleId);
+
+        for( String chr: chromosomes ) {
+            run(sampleId, chr);
+        }
     }
 
     public void run(int sampleId, String chr) throws Exception {
 
+        VariantDAO vdao = new VariantDAO();
+        varTable = vdao.getVariantTable(sampleId);
+       
         // read all log lines from polyphen
         // extract protein acc ids for lines starting with "ERROR: Unable to locate protein entry ";
         Set<String> setOfProteinAccIds = readProteinAccIds(sampleId, chr);
@@ -142,6 +162,14 @@ public class PolyphenFasta extends VariantProcessingBase {
         return null;
     }
 
+    List<String> getChromosomes(int sampleId) throws Exception {
+
+        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
+        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.compile();
+        return q.execute(new Object[]{sampleId});
+    }
     public void setVersion(String version) {
         this.version = version;
     }
