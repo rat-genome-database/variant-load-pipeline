@@ -1,5 +1,6 @@
 package edu.mcw.rgd.ratcn;
 
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
@@ -27,7 +28,8 @@ public class PolyphenLoader2 extends VariantProcessingBase {
 
     private String version;
     private String workDir;
-
+    private String polyTable;
+    private String vtTable;
     public PolyphenLoader2() throws Exception {
 
     }
@@ -53,6 +55,9 @@ public class PolyphenLoader2 extends VariantProcessingBase {
 
     public void run(int sampleId) throws Exception {
 
+        VariantDAO vdao = new VariantDAO();
+        polyTable = vdao.getPolyphenTable(sampleId);
+        vtTable = vdao.getVariantTranscriptTable(sampleId);
         String fileNameBase = getWorkDir() + "/" + sampleId;
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".load_results.log")));
 
@@ -190,7 +195,7 @@ public class PolyphenLoader2 extends VariantProcessingBase {
         String transv, String cpg, String minDjxn, String pfamHit, String idPmax, String idPsnp, String idQmin,
         String codPos) throws Exception {
 
-        String polyphenSql = "SELECT COUNT(*) FROM polyphen WHERE variant_id=? AND protein_id=? AND position=? "+
+        String polyphenSql = "SELECT COUNT(*) FROM "+polyTable+" WHERE variant_id=? AND protein_id=? AND position=? "+
                 " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND variant_transcript_id=? AND o_aa1=? AND o_aa2=?";
         CountQuery q = new CountQuery(this.getDataSource(), polyphenSql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
@@ -209,7 +214,7 @@ public class PolyphenLoader2 extends VariantProcessingBase {
             return false;
         }
 
-        polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
+        polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
                 "prediction, basis, effect, site, region, phat, score1, score2, score_delta, num_observ, num_struct_init, "+
                 "num_struct_filt, pdb_id, res_num, chain_id, ali_ide, ali_len, acc_normed, sec_str, map_region, "+
                 "delta_volume, delta_prop, b_fact, num_h_bonds, het_cont_ave_num, het_cont_min_dist, inter_cont_ave_num, "+
@@ -236,7 +241,7 @@ public class PolyphenLoader2 extends VariantProcessingBase {
             pph2Fdr, msav, transv, cpg, minDjxn, pfamHit, idPmax, idPsnp, idQmin, codPos);
 
 
-        String vartrSql = "UPDATE variant_transcript SET polyphen_status=?,uniprot_id=?,protein_id=? "+
+        String vartrSql = "UPDATE "+vtTable+" SET polyphen_status=?,uniprot_id=?,protein_id=? "+
                 "WHERE variant_transcript_id=?";
         su = new SqlUpdate(this.getDataSource(), vartrSql, new int[]{Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.INTEGER});

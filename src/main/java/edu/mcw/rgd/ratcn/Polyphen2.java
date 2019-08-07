@@ -1,6 +1,7 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.SequenceDAO;
+import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.process.Utils;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -99,6 +100,9 @@ public class Polyphen2 extends VariantProcessingBase {
 
     public void runSample(int sampleId, Collection<String> geneSymbols) throws Exception {
 
+        VariantDAO vdao = new VariantDAO();
+        String varTable = vdao.getVariantTable(sampleId);
+        String vtTable = vdao.getVariantTranscriptTable(sampleId);
         int variantsProcessed = 0;
         int refSeqProteinLengthErrors = 0;
         int refSeqProteinLeftPartMismatch = 0;
@@ -113,7 +117,7 @@ public class Polyphen2 extends VariantProcessingBase {
         "vt.variant_transcript_id, v.start_pos, g.gene_symbol as region_name, \n" +
         "vt.ref_aa, vt.var_aa, vt.full_ref_aa, vt.full_ref_aa_pos, \n" +
         "t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.variant_id, s.map_key, v.chromosome\n" +
-        "FROM sample s,variant v, variant_transcript vt, transcripts t, genes g\n" +
+        "FROM sample s,"+varTable+" v, "+vtTable+" vt, transcripts t, genes g\n" +
         "WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*' \n" +
         "AND v.ref_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND v.var_nuc IN ('A', 'G', 'C', 'T') \n" +
