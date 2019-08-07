@@ -27,7 +27,7 @@ public class Polyphen extends VariantProcessingBase {
 
     private String version;
 
-    private String WORKING_DIR;
+    private String WORKING_DIR = "/data/rat/output";
     private BufferedWriter errorFile;
     private BufferedWriter polyphenFile;
     private BufferedWriter polyphenFileInfo;
