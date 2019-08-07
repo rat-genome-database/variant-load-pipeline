@@ -3,10 +3,12 @@ package edu.mcw.rgd.ratcn;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
 import edu.mcw.rgd.dao.impl.VariantDAO;
+import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.jdbc.core.SqlParameter;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -14,6 +16,7 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Types;
 import java.util.*;
 
 /**
@@ -24,7 +27,7 @@ public class Polyphen extends VariantProcessingBase {
 
     private String version;
 
-    private String WORKING_DIR = "/data/rat/output";
+    private String WORKING_DIR;
     private BufferedWriter errorFile;
     private BufferedWriter polyphenFile;
     private BufferedWriter polyphenFileInfo;
@@ -36,6 +39,9 @@ public class Polyphen extends VariantProcessingBase {
 
     boolean simpleProteinQC = false;
     boolean createFastaFile = false;
+
+    private String varTable;
+    private String varTrTable;
 
     public Polyphen() throws Exception {
 
@@ -77,8 +83,10 @@ public class Polyphen extends VariantProcessingBase {
 
     public void run(int sampleId) throws Exception {
 
-        String[] chromosomes = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "X",
-        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "Y",};
+        varTable = variantDAO.getVariantTable(sampleId);
+        varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
+
+        List<String> chromosomes = getChromosomes(sampleId);
 
         String fileNameBase = WORKING_DIR + "/" + sampleId;
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".log")));
@@ -90,8 +98,7 @@ public class Polyphen extends VariantProcessingBase {
 
     public void run(int sampleId, String chr) throws Exception {
 
-        String varTable = variantDAO.getVariantTable(sampleId);
-        String varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
+
 
         simpleProteinQC = !varTable.equals("VARIANT");
 
@@ -132,9 +139,6 @@ public class Polyphen extends VariantProcessingBase {
     }
 
     public void runSample(int sampleId, int mapKey, String chr) throws Exception {
-
-        String varTable = variantDAO.getVariantTable(sampleId);
-        String varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
 
         int variantsProcessed = 0;
         int refSeqProteinLengthErrors = 0;
@@ -395,6 +399,16 @@ public class Polyphen extends VariantProcessingBase {
         conn.close();
         return strands;
     }
+
+    List<String> getChromosomes(int sampleId) throws Exception {
+
+        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
+        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.compile();
+        return q.execute(new Object[]{sampleId});
+    }
+
 
     public void setVersion(String version) {
         this.version = version;
