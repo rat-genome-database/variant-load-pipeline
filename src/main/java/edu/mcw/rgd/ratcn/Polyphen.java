@@ -97,6 +97,8 @@ public class Polyphen extends VariantProcessingBase {
     }
 
     public void run(int sampleId, String chr) throws Exception {
+        varTable = variantDAO.getVariantTable(sampleId);
+        varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
 
 
 
