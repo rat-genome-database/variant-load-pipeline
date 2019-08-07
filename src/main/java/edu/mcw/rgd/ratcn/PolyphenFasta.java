@@ -71,6 +71,9 @@ public class PolyphenFasta extends VariantProcessingBase {
     }
     public void run(int sampleId) throws Exception {
 
+        VariantDAO vdao = new VariantDAO();
+        varTable = vdao.getVariantTable(sampleId);
+
         List<String> chromosomes = getChromosomes(sampleId);
 
         for( String chr: chromosomes ) {
@@ -80,9 +83,7 @@ public class PolyphenFasta extends VariantProcessingBase {
 
     public void run(int sampleId, String chr) throws Exception {
 
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
-       
+
         // read all log lines from polyphen
         // extract protein acc ids for lines starting with "ERROR: Unable to locate protein entry ";
         Set<String> setOfProteinAccIds = readProteinAccIds(sampleId, chr);
