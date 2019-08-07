@@ -6,12 +6,12 @@
 #
 
 export PPH="/data/polyphen-2.2.2"
-$ODIR=/data/rat/output
-$RDIR=/data/rat/results
+ODIR=/data/rat/output
+RDIR=/data/rat/results
 
 if [ "$2" = "" ]
 then
-  export chr=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 X Y MT )
+  export chr=( 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 X MT )
 else
   export chr=( $2 )
 fi
