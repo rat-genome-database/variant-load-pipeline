@@ -67,6 +67,11 @@ public class PolyphenLoader extends VariantProcessingBase {
 
     public void run(int sampleId) throws Exception {
 
+        VariantDAO vdao = new VariantDAO();
+        varTable = vdao.getVariantTable(sampleId);
+        varTrTable = vdao.getVariantTranscriptTable(sampleId);
+        polyTable = vdao.getPolyphenTable(sampleId);
+
         List<String> chromosomes = getChromosomes(sampleId);
 
         String fileNameBase = getResultsDir() + "/" + sampleId;
