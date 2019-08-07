@@ -2,6 +2,7 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
+import edu.mcw.rgd.dao.spring.StringListQuery;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.SqlParameter;
@@ -27,7 +28,7 @@ public class PolyphenLoader extends VariantProcessingBase {
 
     String varTable = "VARIANT";
     String varTrTable = "VARIANT_TRANSCRIPT";
-
+    String polyTable = "POLYPHEN";
     public PolyphenLoader() throws Exception {
 
     }
@@ -66,8 +67,7 @@ public class PolyphenLoader extends VariantProcessingBase {
 
     public void run(int sampleId) throws Exception {
 
-        String[] chromosomes = {"X", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-        "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",};
+        List<String> chromosomes = getChromosomes(sampleId);
 
         String fileNameBase = getResultsDir() + "/" + sampleId;
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".load_results.log")));
@@ -82,6 +82,7 @@ public class PolyphenLoader extends VariantProcessingBase {
         VariantDAO vdao = new VariantDAO();
         varTable = vdao.getVariantTable(sampleId);
         varTrTable = vdao.getVariantTranscriptTable(sampleId);
+        polyTable = vdao.getPolyphenTable(sampleId);
 
         if( this.getLogWriter()==null ) {
             String fileNameBase = getResultsDir() + "/" + sampleId + "." + chr;
@@ -222,7 +223,7 @@ public class PolyphenLoader extends VariantProcessingBase {
         String transv, String cpg, String minDjxn, String pfamHit, String idPmax, String idPsnp, String idQmin,
         String codPos) throws Exception {
 
-        String polyphenSql = "SELECT COUNT(*) FROM polyphen WHERE variant_id=? AND protein_id=? AND position=? "+
+        String polyphenSql = "SELECT COUNT(*) FROM "+polyTable+" WHERE variant_id=? AND protein_id=? AND position=? "+
                 " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND variant_transcript_id=? AND o_aa1=? AND o_aa2=?";
         CountQuery q = new CountQuery(this.getDataSource(), polyphenSql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
@@ -241,7 +242,7 @@ public class PolyphenLoader extends VariantProcessingBase {
             return false;
         }
 
-        polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
+        polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
                 "prediction, basis, effect, site, region, phat, score1, score2, score_delta, num_observ, num_struct_init, "+
                 "num_struct_filt, pdb_id, res_num, chain_id, ali_ide, ali_len, acc_normed, sec_str, map_region, "+
                 "delta_volume, delta_prop, b_fact, num_h_bonds, het_cont_ave_num, het_cont_min_dist, inter_cont_ave_num, "+
@@ -326,6 +327,14 @@ public class PolyphenLoader extends VariantProcessingBase {
         return null;
     }
 
+    List<String> getChromosomes(int sampleId) throws Exception {
+
+        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
+        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.compile();
+        return q.execute(new Object[]{sampleId});
+    }
     public void setVersion(String version) {
         this.version = version;
     }
