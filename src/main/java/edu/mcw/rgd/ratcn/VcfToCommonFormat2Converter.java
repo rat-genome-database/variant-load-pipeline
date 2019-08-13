@@ -153,7 +153,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
     void processLine(String line, int strainCount, String[] header) throws Exception {
 
         String[] v = line.split("[\\t]", -1);
-
         if (v.length == 0 || v[0].length() == 0 || v[0].charAt(0) == '#')
             //skip lines with "#"
             return;
@@ -186,6 +185,9 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         Integer rgdId = null;
         String hgvsName = null;
         String id = v[2];
+
+        if(id.contains(";"))
+            return;
         if( !Utils.isStringEmpty(id) && id.startsWith("RGDID:")) {
             // sample ID field for ClinVar:
             // RGDID:8650299;NM_001031836.2(KCNU1):c.2736+27C>T
