@@ -73,31 +73,33 @@ public class CommonFormat2Writer {
         if( line.getRsId()==null ) {
             line.setRsId(getDbSnpRsId(line.getPos(), line.getChr()));
         }
-
-        writer.write(line.getChr()+"\t");
-        writer.write(line.getPos()+"\t");
-        writer.write(Utils.defaultString(line.getRefNuc())+"\t");
-        writer.write(Utils.defaultString(line.getVarNuc())+"\t");
-        writer.write(line.getRsId()+"\t");
+        StringBuilder sb = new StringBuilder();
+        sb.append(line.getChr()+"\t")
+        .append(line.getChr()+"\t")
+        .append(line.getPos()+"\t")
+        .append(Utils.defaultString(line.getRefNuc())+"\t")
+        .append(Utils.defaultString(line.getVarNuc())+"\t")
+        .append(line.getRsId()+"\t");
 
         // for indels, there are no ACGT counts
         if( line.getRefNuc()==null || line.getVarNuc()==null ) {
-            writer.write("\t\t\t\t");
+            sb.append("\t\t\t\t");
         } else {
-            writer.write(getInt(line.getCountA()) + "\t");
-            writer.write(getInt(line.getCountC()) + "\t");
-            writer.write(getInt(line.getCountG()) + "\t");
-            writer.write(getInt(line.getCountT()) + "\t");
+            sb.append(getInt(line.getCountA()) + "\t")
+            .append(getInt(line.getCountC()) + "\t")
+            .append(getInt(line.getCountG()) + "\t")
+            .append(getInt(line.getCountT()) + "\t");
         }
 
-        writer.write(getInt(line.getTotalDepth())+"\t");
+        sb.append(getInt(line.getTotalDepth())+"\t")
+                .append(Utils.defaultString(line.getHgvsName())+"\t")
+        .append(getInt(line.getRgdId())+"\t")
+        .append(getInt(line.getAlleleDepth())+"\t")
+        .append(getInt(line.getAlleleCount())+"\t")
+        .append(getInt(line.getReadDepth())+"\t")
+        .append(Utils.defaultString(line.getPaddingBase())+"\n");
 
-        writer.write(Utils.defaultString(line.getHgvsName())+"\t");
-        writer.write(getInt(line.getRgdId())+"\t");
-        writer.write(getInt(line.getAlleleDepth())+"\t");
-        writer.write(getInt(line.getAlleleCount())+"\t");
-        writer.write(getInt(line.getReadDepth())+"\t");
-        writer.write(Utils.defaultString(line.getPaddingBase())+"\n");
+        writer.write(sb.toString());
     }
 
     String getInt(Integer i) {
