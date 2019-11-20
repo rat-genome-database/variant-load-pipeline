@@ -164,11 +164,18 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             return;
         }
 
+
         // variant pos
         int pos = Integer.parseInt(v[1]);
 
+        
+
         String refNuc = v[3];
         String alleles = v[4];
+
+        if(alleles.contains(","))
+            return;
+
 
         // get index of GQ - genotype quality
         String[] format = v[8].split(":");
@@ -199,7 +206,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
                 System.out.println("missing semicolon");
             }
         }
-
         for( int i=9; i<9+strainCount; i++ ) {
             String strain = header[i];
             processStrain(v[i], (HashMap<String, Integer>)genotypeCountMaps[i-9], ADindex, DPindex,
