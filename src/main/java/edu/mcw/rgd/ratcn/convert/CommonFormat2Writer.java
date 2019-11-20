@@ -75,7 +75,6 @@ public class CommonFormat2Writer {
         }
         StringBuilder sb = new StringBuilder();
         sb.append(line.getChr()+"\t")
-        .append(line.getChr()+"\t")
         .append(line.getPos()+"\t")
         .append(Utils.defaultString(line.getRefNuc())+"\t")
         .append(Utils.defaultString(line.getVarNuc())+"\t")
