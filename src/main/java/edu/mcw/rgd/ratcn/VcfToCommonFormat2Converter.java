@@ -228,7 +228,10 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         if(data.length() >= 3) {
             if (!handleGenotype(data.substring(0, 3), genotypeCountMap))
                 return;
-        } 
+        } else {
+            if (!handleGenotype(data, genotypeCountMap))
+                return;
+        }
         // read counts for all alleles, as determined by genotype
         int[] readCount = null;
         String[] arrValues = data.split(":"); // format is in 0/1:470,63:533:99:507,0,3909
