@@ -11,6 +11,7 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.*;
 import java.util.*;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 /**
  * @author mtutaj
@@ -107,7 +108,14 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
     public void run() throws Exception {
 
-        BufferedReader reader = Utils.openReader(vcfFile);
+        BufferedReader reader;
+
+        if( vcfFile.endsWith(".txt.gz") ) {
+            reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(vcfFile))));
+        } else {
+            reader = new BufferedReader(new FileReader(vcfFile));
+        }
+
         String line;
 
         // skip all header lines, starting with '##'
@@ -168,7 +176,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         // variant pos
         int pos = Integer.parseInt(v[1]);
 
-        
 
         String refNuc = v[3];
         String alleles = v[4];
@@ -217,9 +224,11 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
                        String chr, int pos, String refNuc, String alleleString, Integer rgdId, String hgvsName) throws Exception {
 
         // skip rows with not present data (missing genotype)
-        if( !handleGenotype(data.substring(0, 3), genotypeCountMap) )
-            return;
 
+        if(data.length() >= 3) {
+            if (!handleGenotype(data.substring(0, 3), genotypeCountMap))
+                return;
+        } 
         // read counts for all alleles, as determined by genotype
         int[] readCount = null;
         String[] arrValues = data.split(":"); // format is in 0/1:470,63:533:99:507,0,3909
@@ -368,9 +377,9 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             genotypeCount ++;
         genotypeCountMap.put(genotype, genotypeCount);
 
-        if( genotype.equals("./.") )
+        if( genotype.equals("./.") || genotype.equals("."))
             return false;
-        if( genotype.equals("0/0") )
+        if( genotype.equals("0/0") || genotype.equals("0"))
             return false;
         return true;
     }
