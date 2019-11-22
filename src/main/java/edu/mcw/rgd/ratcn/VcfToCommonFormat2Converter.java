@@ -110,7 +110,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
         BufferedReader reader;
 
-        if( vcfFile.endsWith(".txt.gz") ) {
+        if( vcfFile.endsWith(".gz") ) {
             reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(vcfFile))));
         } else {
             reader = new BufferedReader(new FileReader(vcfFile));
