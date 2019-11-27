@@ -123,7 +123,7 @@ public class VariantTranscriptBatch {
                 "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?,\n" +
                 " ?, ?, ?, ?,\n" +
                 "?,?,?,?,?,?)",
-                new int[]{Types.INTEGER, Types.INTEGER, Types.VARCHAR,
+                new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                         Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                         Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR
                 },10000);
