@@ -399,12 +399,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
             varDna = new StringBuffer(varDna.toString().toLowerCase());
 
             // handle deletion
-            if( varNuc.contains("-") ) {
-                int deletionLength = varNuc.length();
+            if( varNuc == null || varNuc.contains("-")  ) {
+                int deletionLength;
+                if(varNuc == null)
+                    deletionLength = 1;
+                else deletionLength = varNuc.length();
                 varDna.replace(variantRelPos-1, variantRelPos-1+deletionLength, "");
             }
             // handle insertion
-            else if( refNuc.contains("-") ) {
+            else if(refNuc == null || refNuc.contains("-") ) {
                 varDna.insert(variantRelPos-1, varNuc);
             }
             // handle insertion
