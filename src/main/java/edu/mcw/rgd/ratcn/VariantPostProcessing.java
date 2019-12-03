@@ -169,10 +169,12 @@ public class VariantPostProcessing extends VariantProcessingBase {
         batch.setVerifyIfInRgd(verifyIfInRgd);
 
       getLogWriter().write("------ PRELOAD VARIANT_TRANSCRIPT for chr"+chr+" --------\n");
-        int preloadedCount = batch.preloadVariantTranscriptData(sample.getId(), chr);
-       getLogWriter().write("------ PRELOADED: "+preloadedCount+"\n");
-        System.out.println("-- VT CACHE PRELOADED: "+preloadedCount);
-
+        int preloadedCount = 0;
+        if(verifyIfInRgd) {
+           preloadedCount = batch.preloadVariantTranscriptData(sample.getId(), chr);
+          getLogWriter().write("------ PRELOADED: " + preloadedCount + "\n");
+          System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
+        }
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" --------\n");
         preloadedCount = geneCache.loadCache(sample.getMapKey(), chr, getDataSource());
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
