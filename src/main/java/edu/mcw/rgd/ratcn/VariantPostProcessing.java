@@ -788,7 +788,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         String sql = "SELECT variant_id,start_pos,end_pos,var_nuc,ref_nuc "+
                 "FROM "+varTable+
-                " WHERE sample_id=? AND chromosome = ?";
+                " WHERE chromosome = ?";
         psVariant = getDataSource().getConnection().prepareStatement(sql);
 
 
@@ -840,7 +840,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     ResultSet getVariantResultSet(int sampleId, String chr) throws Exception {
 
-        psVariant.setInt(1, sampleId);
+
         psVariant.setString(2, chr);
         return psVariant.executeQuery();
     }
