@@ -841,7 +841,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     ResultSet getVariantResultSet(int sampleId, String chr) throws Exception {
 
 
-        psVariant.setString(2, chr);
+        psVariant.setString(1, chr);
         return psVariant.executeQuery();
     }
 
