@@ -106,9 +106,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
         insertSystemLogMessage("variantPostProcessing", "Started for Sample " + sampleId);
 
         try {
-          //  prepareStatements(sampleId);
+            prepareStatements(sampleId);
             processChromosomes(sample, chr);
-          //  closePreparedStatements();
+            closePreparedStatements();
         }
         catch(Exception e) {
             e.printStackTrace();
@@ -799,7 +799,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     PreparedStatement psExonCount;
     PreparedStatement psTranscriptFeatures;
 
- /*   void prepareStatements(int sampleId) throws Exception {
+    void prepareStatements(int sampleId) throws Exception {
         System.out.println("preparing sql statements");
 
         String sql = "SELECT variant_id,start_pos,end_pos,var_nuc,ref_nuc "+
@@ -808,7 +808,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         psVariant = getDataSource().getConnection().prepareStatement(sql);
 
 
-        sql = "SELECT transcript_rgd_id,is_non_coding_ind FROM transcripts WHERE gene_rgd_id=? "+
+  /*      sql = "SELECT transcript_rgd_id,is_non_coding_ind FROM transcripts WHERE gene_rgd_id=? "+
         "AND EXISTS(SELECT 1 FROM maps_data md WHERE md.rgd_id=transcript_rgd_id AND md.map_key=?)";
         psTranscript = getDataSource().getConnection().prepareStatement(sql);
 
@@ -845,13 +845,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 "AND r.OBJECT_KEY = ro.OBJECT_KEY order by OBJECT_NAME, START_POS, STOP_POS";
 
         psTranscriptFeatures = getDataSource().getConnection().prepareStatement(sql);
+        */
     }
-*/
+
     void closePreparedStatements() throws Exception {
         psVariant.close();
-        psTranscript.close();
+    /*    psTranscript.close();
         psExonCount.close();
         psTranscriptFeatures.close();
+    */
     }
 
     ResultSet getVariantResultSet(int sampleId, String chr) throws Exception {
