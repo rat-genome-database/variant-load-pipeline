@@ -214,58 +214,60 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 // Iterate over all transcripts for this gene
                // ResultSet rgdRow = getTranscriptsResultSet(geneRgdId, sample.getMapKey());
               //  while( rgdRow.next() ) {
-                for(TranscriptCache.TranscriptCacheEntry entry: transcriptCache.getTranscripts(geneRgdId)) {
-                //    int transcriptRgdId = rgdRow.getInt(1);
+                List<TranscriptCache.TranscriptCacheEntry> entries = transcriptCache.getTranscripts(geneRgdId);
+                if(entries != null) {
+                    for (TranscriptCache.TranscriptCacheEntry entry : entries) {
+                        //    int transcriptRgdId = rgdRow.getInt(1);
 
-                    getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
-
-
-                    // Get count of exons as we need to ignore the last position of the last exon
-                    int totalExonCount = getExonCount(entry.transcriptRgdId, chr, sample.getMapKey());
-                    getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
-
-                    TranscriptFlags tflags = new TranscriptFlags();
+                        getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
 
 
-                    // See if we have a Coding region
-                 //   String isNonCodingRegion = rgdRow.getString(2);
+                        // Get count of exons as we need to ignore the last position of the last exon
+                        int totalExonCount = getExonCount(entry.transcriptRgdId, chr, sample.getMapKey());
+                        getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
+
+                        TranscriptFlags tflags = new TranscriptFlags();
 
 
-                    processFeatures(entry.transcriptRgdId, chr, sample.getMapKey(), tflags, varStart, varStop, totalExonCount);
+                        // See if we have a Coding region
+                        //   String isNonCodingRegion = rgdRow.getString(2);
 
-                    // not found means it was in an INTRON Region
-                    if (!tflags.inExon) {
-                        if (tflags.transcriptLocation != null) {
-                            tflags.transcriptLocation += ",INTRON";
-                        } else {
-                            tflags.transcriptLocation = "INTRON";
-                        }
-                    }
-                    getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
 
-                    // If not in Exome log and continue
-                    boolean doInsert = false;
-                    if (!tflags.inExon || entry.isNonCodingRegion.equals("Y")) {
-                        if (entry.isNonCodingRegion.equals("Y")) {
+                        processFeatures(entry.transcriptRgdId, chr, sample.getMapKey(), tflags, varStart, varStop, totalExonCount);
+
+                        // not found means it was in an INTRON Region
+                        if (!tflags.inExon) {
                             if (tflags.transcriptLocation != null) {
-                                tflags.transcriptLocation += ",NON-CODING";
+                                tflags.transcriptLocation += ",INTRON";
                             } else {
-                                tflags.transcriptLocation = "NON-CODING";
+                                tflags.transcriptLocation = "INTRON";
                             }
                         }
-                        doInsert = true;
-                    }
-                    else {
-                        boolean wasInserted = processTranscript(tflags, entry.transcriptRgdId, fastaFile,
-                                    varStart, varStop, variantId, refNuc, variantNuc, sample.getId());
-                        if( !wasInserted ) {
-                            doInsert = true;
-                        }
-                    }
+                        getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
 
-                    if( doInsert ) {
-                        insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
-                        // No need to determine Amino Acids if variant not in coding part of exon
+                        // If not in Exome log and continue
+                        boolean doInsert = false;
+                        if (!tflags.inExon || entry.isNonCodingRegion.equals("Y")) {
+                            if (entry.isNonCodingRegion.equals("Y")) {
+                                if (tflags.transcriptLocation != null) {
+                                    tflags.transcriptLocation += ",NON-CODING";
+                                } else {
+                                    tflags.transcriptLocation = "NON-CODING";
+                                }
+                            }
+                            doInsert = true;
+                        } else {
+                            boolean wasInserted = processTranscript(tflags, entry.transcriptRgdId, fastaFile,
+                                    varStart, varStop, variantId, refNuc, variantNuc, sample.getId());
+                            if (!wasInserted) {
+                                doInsert = true;
+                            }
+                        }
+
+                        if (doInsert) {
+                            insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
+                            // No need to determine Amino Acids if variant not in coding part of exon
+                        }
                     }
                 }
                // rgdRow.close();
@@ -288,71 +290,74 @@ public class VariantPostProcessing extends VariantProcessingBase {
         // Get all Transcript features for this transcript. These are Exoms, 3primeUTRs and 5PrimeUTRs
    //     ResultSet transRow = getTranscriptFeaturesResultSet(transcriptRgdId, chr, mapKey);
    //     while( transRow.next() ) {
-            for(TranscriptFeatureCache.TranscriptFeatureCacheEntry transRow: transcriptFeatureCache.getTranscriptFeatures(transcriptRgdId)) {
+        List<TranscriptFeatureCache.TranscriptFeatureCacheEntry> rows = transcriptFeatureCache.getTranscriptFeatures(transcriptRgdId);
+        if(rows != null) {
+            for (TranscriptFeatureCache.TranscriptFeatureCacheEntry transRow : rows) {
 
-            // Assume all rows have the same strand
-            tflags.strand = transRow.strand;
-            int transStart = transRow.startPos;
-            int transStop = transRow.stopPos;
-            String objectName = transRow.objectName;
-            getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
+                // Assume all rows have the same strand
+                tflags.strand = transRow.strand;
+                int transStart = transRow.startPos;
+                int transStop = transRow.stopPos;
+                String objectName = transRow.objectName;
+                getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
 
-            if (objectName.equals("3UTRS") ) {
-                tflags.threeUtr = new Feature(transStart, transStop, objectName);
-            }
-            if (objectName.equals("5UTRS") ) {
-                tflags.fiveUtr = new Feature(transStart, transStop, objectName);
-            }
-            if (objectName.equals("EXONS") ) {
-                tflags.exomsArray.add(new Feature(transStart, transStop, objectName));
+                if (objectName.equals("3UTRS")) {
+                    tflags.threeUtr = new Feature(transStart, transStop, objectName);
+                }
+                if (objectName.equals("5UTRS")) {
+                    tflags.fiveUtr = new Feature(transStart, transStop, objectName);
+                }
+                if (objectName.equals("EXONS")) {
+                    tflags.exomsArray.add(new Feature(transStart, transStop, objectName));
 
-                // 1. Determine splice site is wihtin 10 BP of start / stop of any EXON
-                // 2. Check the start position unless it is the start of the first EXON
-                if (tflags.exomsArray.size() != 1) {
-                    // If the transcript start falls within 10 bp of the variant
-                    if ((transStart - 10 <= varStart) && (transStart + 10 >= varStop)) {
-                        getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " , variantStart: " + varStart + ",  transStart: ${transStart} , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
-                        tflags.nearSpliceSite = "T";
+                    // 1. Determine splice site is wihtin 10 BP of start / stop of any EXON
+                    // 2. Check the start position unless it is the start of the first EXON
+                    if (tflags.exomsArray.size() != 1) {
+                        // If the transcript start falls within 10 bp of the variant
+                        if ((transStart - 10 <= varStart) && (transStart + 10 >= varStop)) {
+                            getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " , variantStart: " + varStart + ",  transStart: ${transStart} , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                            tflags.nearSpliceSite = "T";
+                        }
+                    }
+
+                    // 3. Check the stop position unless it is the stop position of  last exon
+                    if (tflags.exomsArray.size() != totalExonCount) {
+                        // If the transcript stop falls within 10 bp of the variant stop
+                        if ((transStop - 10 <= varStart) && (transStop + 10 >= varStop)) {
+                            getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " ,variantStart: " + varStart + " ,  transStart: " + transStart + " , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                            tflags.nearSpliceSite = "T";
+                        }
                     }
                 }
 
-                // 3. Check the stop position unless it is the stop position of  last exon
-                if (tflags.exomsArray.size() != totalExonCount) {
-                    // If the transcript stop falls within 10 bp of the variant stop
-                    if ((transStop - 10 <= varStart) && (transStop + 10 >= varStop)) {
-                        getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " ,variantStart: " + varStart + " ,  transStart: " + transStart + " , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
-                        tflags.nearSpliceSite = "T";
+                // See if our variant falls into this particular feature , we grad the first feature as the 3Prime and 5prime come first
+                // and skip the EXONS as they would also match which we don't want
+                //
+
+                // Determine up the transcipt Location  , we want one of these strings:
+                // "3UTR,EXON" or "3UTR,INTRON" or "EXON" or "INTRON" or "5UTR,EXON" or "5UTR,INTRON"
+
+                if (transStart <= varStart && transStop >= varStop) {
+                    getLogWriter().write("	Object found " + objectName + "\n");
+
+                    if ((objectName.equals("5UTRS")) || (objectName.equals("3UTRS"))) {
+                        if (tflags.transcriptLocation != null) {
+                            tflags.transcriptLocation += "," + objectName;
+                        } else {
+                            tflags.transcriptLocation = objectName;
+                        }
                     }
-                }
-            }
-
-            // See if our variant falls into this particular feature , we grad the first feature as the 3Prime and 5prime come first
-            // and skip the EXONS as they would also match which we don't want
-            //
-
-            // Determine up the transcipt Location  , we want one of these strings:
-            // "3UTR,EXON" or "3UTR,INTRON" or "EXON" or "INTRON" or "5UTR,EXON" or "5UTR,INTRON"
-
-            if( transStart <= varStart && transStop >= varStop ) {
-                getLogWriter().write("	Object found " + objectName + "\n");
-
-                if ((objectName.equals("5UTRS")) || (objectName.equals("3UTRS"))) {
-                    if (tflags.transcriptLocation != null) {
-                        tflags.transcriptLocation += "," + objectName;
-                    } else {
-                        tflags.transcriptLocation = objectName;
+                    // Add only one EXON using inExon to not do this again
+                    if (objectName.equals("EXONS") && (!tflags.inExon)) {
+                        if (tflags.transcriptLocation != null) {
+                            tflags.transcriptLocation += ",EXON";
+                        } else {
+                            tflags.transcriptLocation = "EXON";
+                        }
+                        tflags.inExon = true;
                     }
+                    getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
                 }
-                // Add only one EXON using inExon to not do this again
-                if (objectName.equals("EXONS") && (!tflags.inExon)) {
-                    if (tflags.transcriptLocation != null) {
-                        tflags.transcriptLocation += ",EXON";
-                    } else {
-                        tflags.transcriptLocation = "EXON";
-                    }
-                    tflags.inExon = true;
-                }
-                getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
             }
         }
       //  transRow.close();

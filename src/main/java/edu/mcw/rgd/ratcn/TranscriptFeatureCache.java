@@ -59,7 +59,9 @@ public class TranscriptFeatureCache {
      * @return list of matching transcript rgd ids, possibly empty
      */
     List<TranscriptFeatureCacheEntry> getTranscriptFeatures(int transcriptRgdId) {
-        return result.get(transcriptRgdId);
+        if(result.containsKey(transcriptRgdId))
+            return result.get(transcriptRgdId);
+        else return null;
     }
 
     class TranscriptFeatureCacheEntry {

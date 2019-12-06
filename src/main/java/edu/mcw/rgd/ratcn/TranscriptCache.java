@@ -73,7 +73,9 @@ public class TranscriptCache {
      * @return list of matching transcript rgd ids, possibly empty
      */
     List<TranscriptCacheEntry> getTranscripts(int geneRgdId) {
-        return result.get(geneRgdId);
+        if(result.containsKey(geneRgdId))
+            return result.get(geneRgdId);
+        else return null;
     }
 
     class TranscriptCacheEntry {
