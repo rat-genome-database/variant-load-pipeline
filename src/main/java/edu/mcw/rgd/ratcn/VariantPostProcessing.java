@@ -31,6 +31,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String varTable; // variant table name: VARIANT, VARIANT_CLINVAR etc
 
     private GeneCache geneCache = new GeneCache();
+    private TranscriptCache transcriptCache = new TranscriptCache();
+    private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
 
     public static void main(String[] args) throws Exception {
 
@@ -104,9 +106,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
         insertSystemLogMessage("variantPostProcessing", "Started for Sample " + sampleId);
 
         try {
-            prepareStatements(sampleId);
+          //  prepareStatements(sampleId);
             processChromosomes(sample, chr);
-            closePreparedStatements();
+          //  closePreparedStatements();
         }
         catch(Exception e) {
             e.printStackTrace();
@@ -180,6 +182,17 @@ public class VariantPostProcessing extends VariantProcessingBase {
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
         System.out.println("-- GENE CACHE PRELOADED: "+preloadedCount);
 
+        getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" --------\n");
+        preloadedCount = transcriptCache.loadCache(sample.getMapKey(), chr, getDataSource());
+        getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        System.out.println("-- TRANSCRIPT CACHE PRELOADED: "+preloadedCount);
+
+        getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" --------\n");
+        preloadedCount = transcriptFeatureCache.loadCache(sample.getMapKey(), chr, getDataSource());
+        getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        System.out.println("-- TRANSCRIPT FEATURE CACHE PRELOADED: "+preloadedCount);
+
+
         // Iterate over all the variants for the given sample_id and chr
         //
         ResultSet variantRow = getVariantResultSet(sample.getId(), chr);
@@ -199,24 +212,26 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 initGene(geneRgdId);
 
                 // Iterate over all transcripts for this gene
-                ResultSet rgdRow = getTranscriptsResultSet(geneRgdId, sample.getMapKey());
-                while( rgdRow.next() ) {
-                    int transcriptRgdId = rgdRow.getInt(1);
-                    getLogWriter().write("	------------- Start Processing of Transcript " + transcriptRgdId + " ---\n");
+               // ResultSet rgdRow = getTranscriptsResultSet(geneRgdId, sample.getMapKey());
+              //  while( rgdRow.next() ) {
+                for(TranscriptCache.TranscriptCacheEntry entry: transcriptCache.getTranscripts(geneRgdId)) {
+                //    int transcriptRgdId = rgdRow.getInt(1);
+
+                    getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
 
 
                     // Get count of exons as we need to ignore the last position of the last exon
-                    int totalExonCount = getExonCount(transcriptRgdId, chr, sample.getMapKey());
+                    int totalExonCount = getExonCount(entry.transcriptRgdId, chr, sample.getMapKey());
                     getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
 
                     TranscriptFlags tflags = new TranscriptFlags();
 
 
                     // See if we have a Coding region
-                    String isNonCodingRegion = rgdRow.getString(2);
+                 //   String isNonCodingRegion = rgdRow.getString(2);
 
 
-                    processFeatures(transcriptRgdId, chr, sample.getMapKey(), tflags, varStart, varStop, totalExonCount);
+                    processFeatures(entry.transcriptRgdId, chr, sample.getMapKey(), tflags, varStart, varStop, totalExonCount);
 
                     // not found means it was in an INTRON Region
                     if (!tflags.inExon) {
@@ -230,8 +245,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
                     // If not in Exome log and continue
                     boolean doInsert = false;
-                    if (!tflags.inExon || isNonCodingRegion.equals("Y")) {
-                        if (isNonCodingRegion.equals("Y")) {
+                    if (!tflags.inExon || entry.isNonCodingRegion.equals("Y")) {
+                        if (entry.isNonCodingRegion.equals("Y")) {
                             if (tflags.transcriptLocation != null) {
                                 tflags.transcriptLocation += ",NON-CODING";
                             } else {
@@ -241,7 +256,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                         doInsert = true;
                     }
                     else {
-                        boolean wasInserted = processTranscript(tflags, transcriptRgdId, fastaFile,
+                        boolean wasInserted = processTranscript(tflags, entry.transcriptRgdId, fastaFile,
                                     varStart, varStop, variantId, refNuc, variantNuc, sample.getId());
                         if( !wasInserted ) {
                             doInsert = true;
@@ -249,11 +264,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     }
 
                     if( doInsert ) {
-                        insertVariantTranscript(variantId, transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
+                        insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
                         // No need to determine Amino Acids if variant not in coding part of exon
                     }
                 }
-                rgdRow.close();
+               // rgdRow.close();
             }
             totalCount += 1;
         }
@@ -271,14 +286,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
     void processFeatures(int transcriptRgdId, String chr, int mapKey, TranscriptFlags tflags, int varStart, int varStop, int totalExonCount) throws Exception {
 
         // Get all Transcript features for this transcript. These are Exoms, 3primeUTRs and 5PrimeUTRs
-        ResultSet transRow = getTranscriptFeaturesResultSet(transcriptRgdId, chr, mapKey);
-        while( transRow.next() ) {
+   //     ResultSet transRow = getTranscriptFeaturesResultSet(transcriptRgdId, chr, mapKey);
+   //     while( transRow.next() ) {
+            for(TranscriptFeatureCache.TranscriptFeatureCacheEntry transRow: transcriptFeatureCache.getTranscriptFeatures(transcriptRgdId)) {
 
             // Assume all rows have the same strand
-            tflags.strand = transRow.getString("STRAND");
-            int transStart = transRow.getInt("START_POS");
-            int transStop = transRow.getInt("STOP_POS");
-            String objectName = transRow.getString("OBJECT_NAME");
+            tflags.strand = transRow.strand;
+            int transStart = transRow.startPos;
+            int transStop = transRow.stopPos;
+            String objectName = transRow.objectName;
             getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
 
             if (objectName.equals("3UTRS") ) {
@@ -339,7 +355,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
             }
         }
-        transRow.close();
+      //  transRow.close();
     }
 
     // Process the variant exoms and UTRS  creating the variant_transcript.
@@ -783,7 +799,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     PreparedStatement psExonCount;
     PreparedStatement psTranscriptFeatures;
 
-    void prepareStatements(int sampleId) throws Exception {
+ /*   void prepareStatements(int sampleId) throws Exception {
         System.out.println("preparing sql statements");
 
         String sql = "SELECT variant_id,start_pos,end_pos,var_nuc,ref_nuc "+
@@ -830,7 +846,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         psTranscriptFeatures = getDataSource().getConnection().prepareStatement(sql);
     }
-
+*/
     void closePreparedStatements() throws Exception {
         psVariant.close();
         psTranscript.close();
@@ -846,22 +862,24 @@ public class VariantPostProcessing extends VariantProcessingBase {
     }
 
     // Get all transcripts for gene
-    ResultSet getTranscriptsResultSet(int geneRgdId, int mapKey) throws Exception {
+/*    ResultSet getTranscriptsResultSet(int geneRgdId, int mapKey) throws Exception {
 
         psTranscript.setInt(1, geneRgdId);
         psTranscript.setInt(2, mapKey);
         return psTranscript.executeQuery();
     }
-
+*/
     int getExonCount(int transcriptRgdId, String chr, int mapKey) throws Exception {
 
-        psExonCount.setInt(1, transcriptRgdId);
+   /*     psExonCount.setInt(1, transcriptRgdId);
         psExonCount.setInt(2, mapKey);
         psExonCount.setString(3, chr);
         ResultSet rs = psExonCount.executeQuery();
         rs.next();
         int exonCount = rs.getInt(1);
         rs.close();
+    */
+        int exonCount = transcriptCache.exonResult.get(transcriptRgdId);
         return exonCount;
     }
 
