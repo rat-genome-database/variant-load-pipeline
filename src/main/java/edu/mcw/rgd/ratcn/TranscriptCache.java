@@ -45,8 +45,8 @@ public class TranscriptCache {
         ps1.setString(2, chromosome);
         ResultSet rs1 = ps1.executeQuery();
         while( rs1.next() ) {
-            int transcriptRgdId = rs.getInt(1);
-            int exonCount = rs.getInt(2);
+            int transcriptRgdId = rs1.getInt(1);
+            int exonCount = rs1.getInt(2);
             exonResult.put(transcriptRgdId,exonCount);
         }
 
