@@ -56,10 +56,10 @@ public class TranscriptCache {
             int geneRgdId = rs.getInt(2);
             String isNonCoding = rs.getString(3);
             List<TranscriptCacheEntry> list = new ArrayList<>();
-            entries.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding,exonResult.get(transcriptRgdId)));
+            entries.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding));
             if(result!= null && result.containsKey(geneRgdId))
                 list = result.get(geneRgdId);
-            list.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding,exonResult.get(transcriptRgdId)));
+            list.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding));
             result.put(geneRgdId,list);
         }
         conn.close();
@@ -82,12 +82,12 @@ public class TranscriptCache {
         public int transcriptRgdId;
         public int geneRgdId;
         public String isNonCodingRegion;
-        public int exonCount;
-        public TranscriptCacheEntry(int transcriptRgdId, int geneRgdId, String isNonCodingRegion,int exonCount) {
+
+        public TranscriptCacheEntry(int transcriptRgdId, int geneRgdId, String isNonCodingRegion) {
             this.transcriptRgdId = transcriptRgdId;
             this.geneRgdId = geneRgdId;
             this.isNonCodingRegion = isNonCodingRegion;
-            this.exonCount = exonCount;
+
         }
     }
 }

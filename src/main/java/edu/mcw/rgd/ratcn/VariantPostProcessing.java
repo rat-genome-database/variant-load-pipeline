@@ -886,8 +886,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
         int exonCount = rs.getInt(1);
         rs.close();
     */
-        int exonCount = transcriptCache.exonResult.get(transcriptRgdId);
-        return exonCount;
+        if(transcriptCache.exonResult.containsKey(transcriptRgdId))
+           return transcriptCache.exonResult.get(transcriptRgdId);
+        else return 0;
     }
 
     // Get all Transcript features for this transcript. These are Exoms, 3primeUTRs and 5PrimeUTRs
