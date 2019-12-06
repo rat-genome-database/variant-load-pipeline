@@ -174,22 +174,22 @@ public class VariantPostProcessing extends VariantProcessingBase {
         int preloadedCount = 0;
         if(verifyIfInRgd) {
            preloadedCount = batch.preloadVariantTranscriptData(sample.getId(), chr);
-          getLogWriter().write("------ PRELOADED: " + preloadedCount + "\n");
+            logStatusMsg("------ PRELOADED: " + preloadedCount + "\n");
           System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
         }
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" --------\n");
         preloadedCount = geneCache.loadCache(sample.getMapKey(), chr, getDataSource());
-        getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
         System.out.println("-- GENE CACHE PRELOADED: "+preloadedCount);
 
         getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" --------\n");
         preloadedCount = transcriptCache.loadCache(sample.getMapKey(), chr, getDataSource());
-        getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg("------ INIT TRANSCRIPT CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
         System.out.println("-- TRANSCRIPT CACHE PRELOADED: "+preloadedCount);
 
         getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" --------\n");
         preloadedCount = transcriptFeatureCache.loadCache(sample.getMapKey(), chr, getDataSource());
-        getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
         System.out.println("-- TRANSCRIPT FEATURE CACHE PRELOADED: "+preloadedCount);
 
 
@@ -204,7 +204,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             String refNuc = variantRow.getString(5);
 
             getLogWriter().write("------------------- Start Processing of Variant ---------\n");
-            getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
+            logStatusMsg("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
 
             // Get all GENES for this variant
             for( int geneRgdId: geneCache.getGeneRgdIds(varStart) ) {
