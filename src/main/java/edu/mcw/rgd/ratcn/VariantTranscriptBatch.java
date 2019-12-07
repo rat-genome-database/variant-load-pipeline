@@ -56,7 +56,7 @@ public class VariantTranscriptBatch {
         vtData = new HashMap();
         Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(2, chr);
+        ps.setString(1, chr);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             // KEY(variant_id,transcript_rgd_id)
