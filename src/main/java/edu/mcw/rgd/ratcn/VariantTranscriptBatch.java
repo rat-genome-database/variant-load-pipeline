@@ -51,12 +51,13 @@ public class VariantTranscriptBatch {
     /// useful for ClinVar data
     public int preloadVariantTranscriptData(int sampleId, String chr) throws Exception {
         String sql = "SELECT variant_id,transcript_rgd_id,variant_transcript_id FROM "+tableNameVT+" vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM "+tableNameV+" v WHERE v.variant_id=vt.variant_id AND chromosome=?)";
+                "WHERE EXISTS(SELECT 1 FROM "+tableNameV+" v WHERE v.variant_id=vt.variant_id AND v.sample_id=? AND chromosome=?)";
 
         vtData = new HashMap();
         Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(1, chr);
+        ps.setInt(1,sampleId);
+        ps.setString(2, chr);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             // KEY(variant_id,transcript_rgd_id)
