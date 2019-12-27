@@ -231,7 +231,7 @@ public class PolyphenLoader extends VariantProcessingBase {
         String polyphenSql = "SELECT COUNT(*) FROM "+polyTable+" WHERE variant_id=? AND protein_id=? AND position=? "+
                 " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND variant_transcript_id=? AND o_aa1=? AND o_aa2=?";
         CountQuery q = new CountQuery(this.getDataSource(), polyphenSql);
-        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.declareParameter(new SqlParameter(Types.VARCHAR));
         q.declareParameter(new SqlParameter(Types.VARCHAR));
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.declareParameter(new SqlParameter(Types.VARCHAR));
@@ -257,7 +257,7 @@ public class PolyphenLoader extends VariantProcessingBase {
                 "cod_pos, creation_date) "+
                 "VALUES(POLYPHEN_SEQ.NEXTVAL,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,"+
                 "?,?,?,?,?, ?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,SYSDATE)";
-        SqlUpdate su = new SqlUpdate(this.getDataSource(), polyphenSql, new int[]{Types.INTEGER, Types.VARCHAR, Types.VARCHAR,
+        SqlUpdate su = new SqlUpdate(this.getDataSource(), polyphenSql, new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
@@ -340,6 +340,9 @@ public class PolyphenLoader extends VariantProcessingBase {
         q.compile();
         return q.execute(new Object[]{sampleId});
     }
+
+
+
     public void setVersion(String version) {
         this.version = version;
     }
