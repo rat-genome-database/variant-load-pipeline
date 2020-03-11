@@ -135,7 +135,8 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
                 }
 
                 if(id == 0){
-                    id = getNextKeyFromSequence("var_seq");
+                    RgdId newRgdId = managementDAO.createRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
+                    id = newRgdId.getRgdId();
                     mapData.setId(id);
                     varBatch.add(mapData);
                 }
@@ -229,13 +230,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         sql2.flush();
 
     }
-    public int getNextKeyFromSequence(String seqName) throws Exception {
-
-        String query = "SELECT " + seqName + ".nextval from dual";
-        CountQuery q = new CountQuery(this.getVariantDataSource(), query);
-        List<Integer> results = q.execute();
-        return results.get(0);
-    }
+   
     List<String> getChromosomes(int sampleId) throws Exception {
 
         String sql = "SELECT DISTINCT chromosome FROM variant WHERE sample_id=? ";
