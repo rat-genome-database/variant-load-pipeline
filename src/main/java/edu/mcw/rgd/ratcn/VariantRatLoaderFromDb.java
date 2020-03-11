@@ -7,6 +7,7 @@ import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.dao.spring.VariantMapper;
+import edu.mcw.rgd.datamodel.RgdId;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.process.Utils;
