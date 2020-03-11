@@ -1,7 +1,7 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
-import edu.mcw.rgd.dao.impl.MapDAO;
+import edu.mcw.rgd.dao.impl.RGDManagementDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
@@ -36,6 +36,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
     private SampleDAO sampleDAO = new SampleDAO();
     private VariantDAO dao = new VariantDAO();
+	private RGDManagementDAO managementDAO = new RGDManagementDAO();
     List<VariantMapData> varBatch = new ArrayList<>();
     List<VariantSampleDetail> sampleBatch = new ArrayList<>();
     HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
