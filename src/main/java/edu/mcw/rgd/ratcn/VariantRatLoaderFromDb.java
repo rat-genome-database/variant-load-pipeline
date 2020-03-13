@@ -55,6 +55,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
         // Check incoming arguments and set Config with those the user can override
         List<String> sampleIds = new ArrayList<>();
+		List<String> chrs = new ArrayList<>();
         String chr = null;
         for( int i=0; i<args.length; i++ ) {
             String arg = args[i];
@@ -64,7 +65,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
                     sampleIds.add(args[++i]);
                     break;
                 case "--chr":
-                    chr = args[++i];
+                    chrs.add(args[++i]);
                     break;
             }
         }
@@ -77,11 +78,12 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
 
 
-
-       for( int i=0; i<sampleIds.size(); i++ ) {
-                instance.run(sampleIds.get(i),chr);
+	for( int j=0; j<chrs.size(); j++ ) {
+        for( int i=0; i<sampleIds.size(); i++ ) {
+                instance.run(sampleIds.get(i),chrs.get(j));
         }
-    }
+	}
+}
 
 
 
