@@ -185,7 +185,9 @@ public class VariantProcessingBase {
             }
         }
     }
-
+    public DataSource getVariantDataSource() throws Exception{
+        return DataSourceFactory.getInstance().getDataSource("Variant");
+    }
     public DataSource getDataSource() {
         return dataSource;
     }

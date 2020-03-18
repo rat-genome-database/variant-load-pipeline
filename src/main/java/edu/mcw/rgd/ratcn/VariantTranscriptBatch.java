@@ -30,14 +30,10 @@ public class VariantTranscriptBatch {
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;
     private boolean verifyIfInRgd = false;
-    private String tableNameVT;
-    private String tableNameV;
 
-    public VariantTranscriptBatch(int sampleId) {
-        VariantDAO vdao = new VariantDAO();
-        tableNameVT = vdao.getVariantTranscriptTable(sampleId);
-        tableNameV = vdao.getVariantTable(sampleId);
-    }
+
+    public VariantTranscriptBatch() {
+           }
 
     public int getRowsCommitted() {
         return rowsCommitted;
@@ -49,34 +45,35 @@ public class VariantTranscriptBatch {
 
     /// preload existing variant transcript data for the entire chromosome
     /// useful for ClinVar data
-    public int preloadVariantTranscriptData(int sampleId, String chr) throws Exception {
-        String sql = "SELECT variant_id,transcript_rgd_id,variant_transcript_id FROM "+tableNameVT+" vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM "+tableNameV+" v WHERE v.variant_id=vt.variant_id AND v.sample_id=? AND chromosome=?)";
+    public int preloadVariantTranscriptData(int mapKey, String chr) throws Exception {
+        String sql = "SELECT variant_id,transcript_rgd_id FROM variant_transcript vt \n" +
+                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_id AND v.map_key=? AND v.chromosome=?)";
 
         vtData = new HashMap();
-        Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
+        Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setInt(1,sampleId);
+        ps.setInt(1,mapKey);
         ps.setString(2, chr);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             // KEY(variant_id,transcript_rgd_id)
-            String key = rs.getLong(1)+","+rs.getLong(2);
+            int key = rs.getInt(1);
             // VALUE(variant_transcript_id)
-            Long value = rs.getLong(3);
+            int value = rs.getInt(2);
 
-            List<Long> values = vtData.get(key);
+            List<Integer> values = vtData.get(key);
             if( values==null ) {
                 values = new ArrayList<>();
-                vtData.put(key, values);
             }
             values.add(value);
+            vtData.put(key, values);
+
         }
         conn.close();
 
         return vtData.size();
     }
-    private Map<String, List<Long>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
+    private Map<Integer, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
 
     /**
      *
@@ -115,17 +112,17 @@ public class VariantTranscriptBatch {
         if( batch.isEmpty() )
             return;
 
-      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
-                "INSERT INTO "+tableNameVT+ "\n" +
-                "(VARIANT_TRANSCRIPT_ID, VARIANT_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
+      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getDataSource("Variant"),
+                "INSERT INTO VARIANT_TRANSCRIPT \n" +
+                "( VARIANT_RGD_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
-                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA, FULL_REF_NUC, FRAMESHIFT)\n" +
-                "VALUES(VARIANT_TRANSCRIPT_SEQ.nextval, ?, ?, ?,\n" +
+                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA_SEQ_KEY, FULL_REF_NUC_SEQ_KEY, FRAMESHIFT)\n" +
+                "VALUES( ?, ?, ?,\n" +
                 " ?, ?, ?, ?,\n" +
                 "?,?,?,?,?,?)",
-                new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                new int[]{Types.INTEGER, Types.VARCHAR, Types.VARCHAR,
                         Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                        Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR
+                        Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR
                 },10000);
 
         bsu.compile();
@@ -143,8 +140,8 @@ public class VariantTranscriptBatch {
                 vt.getFullRefAAPos(),
                 vt.getFullRefNucPos(),
                 vt.getTripletError(),
-                vt.getFullRefAA(),
-                vt.getFullRefNuc(),
+                vt.getFullRefAASeqKey(),
+                vt.getFullRefNucSeqKey(),
                 vt.getFrameShift()
             );
 
@@ -163,33 +160,20 @@ public class VariantTranscriptBatch {
             Iterator<VariantTranscript> it = batch.iterator();
             while( it.hasNext() ) {
                 VariantTranscript vt = it.next();
-                String key = vt.getVariantId()+","+vt.getTranscriptRgdId();
-                List results = vtData.get(key);
+                long key = vt.getVariantId();
+                //+","+vt.getTranscriptRgdId();
+                List<Integer> results = vtData.get(key);
                 if( results!=null ) {
-                    rowsUpToDate++;
-                    it.remove();
-                }
-            }
-        } else {
+                    for(int result:results){
+                        if(result == vt.getTranscriptRgdId()){
+                            rowsUpToDate++;
+                            it.remove();
+                        }
+                    }
 
-            String sql = "SELECT variant_transcript_id FROM " + tableNameVT + " WHERE variant_id=? AND transcript_rgd_id=?";
-            StringListQuery q = new StringListQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
-            q.declareParameter(new SqlParameter(Types.INTEGER));
-            q.declareParameter(new SqlParameter(Types.INTEGER));
-            q.compile();
-
-            // remove from batch rows that are already in rgd
-            Iterator<VariantTranscript> it = batch.iterator();
-            while (it.hasNext()) {
-                VariantTranscript vt = it.next();
-                List results = q.execute(vt.getVariantId(), vt.getTranscriptRgdId());
-                if (!results.isEmpty()) {
-                    rowsUpToDate++;
-                    it.remove();
                 }
             }
         }
-
         insertRowsNoVerify();
     }
 
