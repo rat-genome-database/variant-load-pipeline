@@ -26,7 +26,6 @@ public class PolyphenFasta extends VariantProcessingBase {
     private String resultsDir;
     private String outputDir;
 
-    String varTable = "VARIANT";
     private TranscriptDAO transcriptDAO = new TranscriptDAO();
     private SequenceDAO sequenceDAO = new SequenceDAO();
 
@@ -40,12 +39,12 @@ public class PolyphenFasta extends VariantProcessingBase {
         PolyphenFasta instance = (PolyphenFasta) (bf.getBean("polyphenFasta"));
 
         // process args
-        int sampleId = 0;
+        int mapKey = 0;
         String chr = null;
 
         for( int i=0; i<args.length; i++ ) {
-            if( args[i].equals("--sample") ) {
-                sampleId = Integer.parseInt(args[++i]);
+            if( args[i].equals("--mapKey") ) {
+                mapKey = Integer.parseInt(args[++i]);
             }
             else if( args[i].equals("--chr") ) {
                 chr = args[++i];
@@ -58,41 +57,36 @@ public class PolyphenFasta extends VariantProcessingBase {
             }
         }
 
-        String fileNameBase = instance.getResultsDir() + "/" + sampleId +"." + chr;
+        String fileNameBase = instance.getResultsDir() + "/" + mapKey +"." + chr;
         instance.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".fasta.log")));
 
         if( chr==null )
-            instance.run(sampleId);
+            instance.run(mapKey);
         else
-            instance.run(sampleId, chr);
+            instance.run(mapKey, chr);
 
 
         instance.getLogWriter().close();
     }
-    public void run(int sampleId) throws Exception {
+    public void run(int mapKey) throws Exception {
 
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
-
-        List<String> chromosomes = getChromosomes(sampleId);
+        List<String> chromosomes = getChromosomes(mapKey);
 
         for( String chr: chromosomes ) {
-            run(sampleId, chr);
+            run(mapKey, chr);
         }
     }
 
-    public void run(int sampleId, String chr) throws Exception {
+    public void run(int mapKey, String chr) throws Exception {
 
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
         // read all log lines from polyphen
         // extract protein acc ids for lines starting with "ERROR: Unable to locate protein entry ";
-        Set<String> setOfProteinAccIds = readProteinAccIds(sampleId, chr);
+        Set<String> setOfProteinAccIds = readProteinAccIds(mapKey, chr);
         List<String> proteinAccIds = new ArrayList<String>(setOfProteinAccIds);
         Collections.shuffle(proteinAccIds);
 
         // create the fasta file
-        String fastaFileName = this.getOutputDir()+"/Sample"+sampleId+"."+chr+".PolyPhenInput.fasta";
+        String fastaFileName = this.getOutputDir()+"/Assemby"+mapKey+"."+chr+".PolyPhenInput.fasta";
         BufferedWriter writer = new BufferedWriter(new FileWriter(fastaFileName));
 
         // generate fasta sequence for extracted protein acc ids
@@ -128,10 +122,10 @@ public class PolyphenFasta extends VariantProcessingBase {
         getLogWriter().write("DONE! "+nr+" fasta sequences were written out to fasta file!\n");
     }
 
-    public Set<String> readProteinAccIds(int sampleId, String chr) throws IOException {
+    public Set<String> readProteinAccIds(int mapKey, String chr) throws IOException {
 
         // open the polyphen log file
-        String polyphenLogFileName = this.getResultsDir()+"/"+sampleId+"."+chr+".log";
+        String polyphenLogFileName = this.getResultsDir()+"/"+mapKey+"."+chr+".log";
         BufferedReader reader = new BufferedReader(new FileReader(polyphenLogFileName));
 
         // read all log lines from polyphen
@@ -166,8 +160,8 @@ public class PolyphenFasta extends VariantProcessingBase {
 
     List<String> getChromosomes(int sampleId) throws Exception {
 
-        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
-        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        String sql = "SELECT DISTINCT chromosome FROM variant_map_data WHERE map_key=? ";
+        StringListQuery q = new StringListQuery(getVariantDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.compile();
         return q.execute(new Object[]{sampleId});

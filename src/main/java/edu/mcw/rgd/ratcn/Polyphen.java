@@ -1,11 +1,10 @@
 package edu.mcw.rgd.ratcn;
 
-import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
-import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
-import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
+import edu.mcw.rgd.datamodel.SpeciesType;
+import edu.mcw.rgd.process.mapping.MapManager;
 import org.springframework.beans.factory.xml.XmlBeanFactory;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.SqlParameter;
@@ -34,14 +33,11 @@ public class Polyphen extends VariantProcessingBase {
     private BufferedWriter fastaFile;
 
     SequenceDAO sequenceDAO = new SequenceDAO();
-    SampleDAO sampleDAO = new SampleDAO();
-    VariantDAO variantDAO = new VariantDAO();
 
     boolean simpleProteinQC = false;
     boolean createFastaFile = false;
 
-    private String varTable;
-    private String varTrTable;
+
 
     public Polyphen() throws Exception {
 
@@ -52,15 +48,13 @@ public class Polyphen extends VariantProcessingBase {
         XmlBeanFactory bf=new XmlBeanFactory(new FileSystemResource("properties/AppConfigure.xml"));
         Polyphen instance = (Polyphen) (bf.getBean("polyphen"));
 
-        instance.sampleDAO.setDataSource(instance.getDataSource());
 
         // process args
-        int sampleId = 0;
         String chr = null;
-
+        int mapKey = 0;
         for( int i=0; i<args.length; i++ ) {
-            if( args[i].equals("--sample") ) {
-                sampleId = Integer.parseInt(args[++i]);
+            if( args[i].equals("--mapKey") ) {
+                mapKey = Integer.parseInt(args[++i]);
             }
             else if( args[i].equals("--chr") ) {
                 chr = args[++i];
@@ -74,61 +68,56 @@ public class Polyphen extends VariantProcessingBase {
         }
 
         if( chr==null )
-            instance.run(sampleId);
+            instance.run(mapKey);
         else
-            instance.run(sampleId, chr);
+            instance.run(mapKey, chr);
 
         instance.getLogWriter().close();
+
     }
 
-    public void run(int sampleId) throws Exception {
+    public void run(int mapKey) throws Exception {
 
-        varTable = variantDAO.getVariantTable(sampleId);
-        varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
+        List<String> chromosomes = getChromosomes(mapKey);
 
-        List<String> chromosomes = getChromosomes(sampleId);
-
-        String fileNameBase = WORKING_DIR + "/" + sampleId;
+        String fileNameBase = WORKING_DIR + "/" + mapKey;
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".log")));
 
         for( String chr: chromosomes ) {
-            run(sampleId, chr);
+            run(mapKey, chr);
         }
     }
 
-    public void run(int sampleId, String chr) throws Exception {
-        varTable = variantDAO.getVariantTable(sampleId);
-        varTrTable = variantDAO.getVariantTranscriptTable(sampleId);
+    public void run(int mapKey, String chr) throws Exception {
 
-
-
-        simpleProteinQC = !varTable.equals("VARIANT");
+        int species = MapManager.getInstance().getMap(mapKey).getSpeciesTypeKey();
+        if(species != SpeciesType.RAT)
+            simpleProteinQC = true;
+        else simpleProteinQC = false;
 
         if( this.getLogWriter()==null ) {
-            String fileNameBase = WORKING_DIR + "/" + sampleId + "." + chr;
+            String fileNameBase = WORKING_DIR + "/" + mapKey + "." + chr;
             this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".log")));
         }
 
-        String errorFileName = WORKING_DIR + "/ErrorFile_Sample" + sampleId + "."+chr+".PolyPhen.error";
+        String errorFileName = WORKING_DIR + "/ErrorFile_Assembly" + mapKey + "."+chr+".PolyPhen.error";
         errorFile = new BufferedWriter(new FileWriter(errorFileName));
 
-        String polyphenFileName = WORKING_DIR + "/Sample" + sampleId + "."+chr+".PolyPhenInput";
+        String polyphenFileName = WORKING_DIR + "/Assembly" + mapKey + "."+chr+".PolyPhenInput";
         this.getLogWriter().write("starting "+polyphenFileName+"\n");
         polyphenFile = new BufferedWriter(new FileWriter(polyphenFileName));
         polyphenFileInfo = new BufferedWriter(new FileWriter(polyphenFileName+".info"));
         polyphenFileInfo.append("#Note: if STRAND is '-', then inverted NUC_VAR is AA_REF\n");
-        polyphenFileInfo.append("#VARIANT_ID\tVARIANT_TRANSCRIPT_ID\tLOCUS_NAME\tPROTEIN_ACC_ID\tRELATIVE_VAR_POS\tREF_AA\tVAR_AA\tSTRAND\tTRANSCRIPT_RGD_ID\n");
+        polyphenFileInfo.append("#VARIANT_ID\tLOCUS_NAME\tPROTEIN_ACC_ID\tRELATIVE_VAR_POS\tREF_AA\tVAR_AA\tSTRAND\tTRANSCRIPT_RGD_ID\n");
 
-        Sample sample = sampleDAO.getSampleBySampleId(sampleId);
-        int mapKey = sample.getMapKey();
 
         if( createFastaFile ) {
             // create the fasta file
-            String fastaFileName = WORKING_DIR + "/Sample" + sampleId + "." + chr + ".PolyPhenInput.fasta";
+            String fastaFileName = WORKING_DIR + "/Assembly" + mapKey + "." + chr + ".PolyPhenInput.fasta";
             fastaFile = new BufferedWriter(new FileWriter(fastaFileName));
         }
 
-        runSample(sampleId, mapKey, chr);
+        runAssembly( mapKey, chr);
 
         polyphenFileInfo.close();
         polyphenFile.close();
@@ -140,7 +129,7 @@ public class Polyphen extends VariantProcessingBase {
         this.getLogWriter().write("finishing "+polyphenFileName+"\n\n\n");
     }
 
-    public void runSample(int sampleId, int mapKey, String chr) throws Exception {
+    public void runAssembly( int mapKey, String chr) throws Exception {
 
         int variantsProcessed = 0;
         int refSeqProteinLengthErrors = 0;
@@ -153,45 +142,49 @@ public class Polyphen extends VariantProcessingBase {
         // this query hint forces oracle to use indexes on VARIANT_TRANSCRIPT table
         // (many times it was using full scans for unknown reasons)
 
-        String sql = "SELECT /*+ INDEX(vt) */ \n" +
-        "vt.variant_transcript_id, v.start_pos, g.gene_symbol as region_name, t.gene_rgd_id, \n" +
-        "v.ref_nuc, v.var_nuc, vt.ref_aa, vt.var_aa, vt.full_ref_aa, vt.full_ref_aa_pos, \n" +
-        "t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.variant_id\n" +
-        "FROM "+varTable+" v, "+varTrTable+" vt, transcripts t, genes g\n" +
+       String sql = "SELECT /*+ INDEX(vt) */ \n" +
+        "vm.start_pos, g.gene_symbol as region_name, t.gene_rgd_id, \n" +
+        "v.ref_nuc, v.var_nuc, vt.ref_aa, vt.var_aa, vt.full_ref_aa_seq_key, vt.full_ref_aa_pos, \n" +
+        "t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.rgd_id\n" +
+        "FROM variant v, variant_map_data vm, variant_transcript vt, transcripts t, genes g\n" +
         "WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*' \n" +
         "AND v.ref_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND v.var_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL \n" +
-        "AND v.sample_id = ? \n" +
+        "AND v.map_key = ? \n" +
         "AND v.chromosome = ? \n" +
-        "AND v.variant_id = vt.variant_id \n" +
+        "AND v.rgd_id = vt.variant_rgd_id \n" +
+        "AND v.rgd_id = vm.rgd_id \n" +
         "AND t.transcript_rgd_id=vt.transcript_rgd_id \n" +
         "AND t.gene_rgd_id=g.rgd_id";
 
         Connection conn = this.getDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setInt(1, sampleId);
+        ps.setInt(1, mapKey);
         ps.setString(2, chr);
         ResultSet rs = ps.executeQuery();
         int lineNr = 0;
         String line;
         while( rs.next() ) {
             lineNr++;
-            long variantTranscriptId = rs.getLong(1);
-            int startPos = rs.getInt(2);
-            String regionName = rs.getString(3);
+            //long variantTranscriptId = rs.getLong(1);
+            int startPos = rs.getInt(1);
+            String regionName = rs.getString(2);
             //int geneRgdId = rs.getInt(4);
             //String refNuc = rs.getString(5);
             //String varNuc = rs.getString(6);
-            String refAA = rs.getString(7);
-            String varAA = rs.getString(8);
-            String fullRefAA = rs.getString(9);
-            int fullRefAaaPos = rs.getInt(10);
+            String refAA = rs.getString(6);
+            String varAA = rs.getString(7);
+            int fullRefAASeqKey = rs.getInt(8);
+            int fullRefAaaPos = rs.getInt(9);
             //String nucAccId = rs.getString(11);
-            String proteinAccId = rs.getString(12);
-            int transcriptRgdId = rs.getInt(13);
-            long variantId = rs.getLong(14);
+            String proteinAccId = rs.getString(11);
+            int transcriptRgdId = rs.getInt(12);
+            long variantId = rs.getLong(13);
 
+            String fullRefAA = null;
+            if(fullRefAASeqKey != 0)
+                fullRefAA = getfullRefAASequences(transcriptRgdId).get(0).getSeqData();
             String strand = getStrand(transcriptRgdId, chr, startPos, mapKey);
 
             this.getLogWriter().append("\n\nChr " + chr + " line " + lineNr + "\n" +
@@ -247,7 +240,7 @@ public class Polyphen extends VariantProcessingBase {
 
                 // write polyphen input info file
                 //#VARIANT_ID\tVARIANT_TRANSCRIPT_ID\tLOCUS_NAME\tPROTEIN_ACC_ID\tRELATIVE_VAR_POS\tREF_AA\tVAR_AA\tSTRAND\tTRANSCRIPT_RGD_ID");
-                line = variantId+"\t"+variantTranscriptId+"\t"+regionName+"\t"+proteinAccId+"\t"+fullRefAaaPos+"\t"+refAA+"\t"+varAA+"\t"+strand+"\t"+transcriptRgdId+"\n";
+                line = variantId+"\t"+regionName+"\t"+proteinAccId+"\t"+fullRefAaaPos+"\t"+refAA+"\t"+varAA+"\t"+strand+"\t"+transcriptRgdId+"\n";
                 polyphenFileInfo.write(line);
 
                 writeFastaFile(proteinAccId, fullRefAA);
@@ -336,7 +329,7 @@ public class Polyphen extends VariantProcessingBase {
 
                     // write polyphen input info file
                     //#VARIANT_ID\tVARIANT_TRANSCRIPT_ID\tLOCUS_NAME\tPROTEIN_ACC_ID\tRELATIVE_VAR_POS\tREF_AA\tVAR_AA\tSTRAND\tTRANSCRIPT_RGD_ID");
-                    line = variantId+"\t"+variantTranscriptId+"\t"+regionName+"\t"+proteinAccId+"\t"+fullRefAaaPos+"\t"+refAA+"\t"+varAA+"\t"+strand+"\t"+transcriptRgdId+"\n";
+                    line = variantId+"\t"+regionName+"\t"+proteinAccId+"\t"+fullRefAaaPos+"\t"+refAA+"\t"+varAA+"\t"+strand+"\t"+transcriptRgdId+"\n";
                     polyphenFileInfo.write(line);
 
                     writeFastaFile(proteinAccId, fullRefAA);
@@ -376,6 +369,9 @@ public class Polyphen extends VariantProcessingBase {
     List<Sequence> getProteinSequences(int transcriptRgdId) throws Exception {
         return sequenceDAO.getObjectSequences(transcriptRgdId, "ncbi_protein");
     }
+    List<Sequence> getfullRefAASequences(int transcriptRgdId) throws Exception {
+        return sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
+    }
 
     String getStrand(int rgdId, String chr, int pos, int mapKey) throws Exception {
 
@@ -402,13 +398,13 @@ public class Polyphen extends VariantProcessingBase {
         return strands;
     }
 
-    List<String> getChromosomes(int sampleId) throws Exception {
+    List<String> getChromosomes(int mapKey) throws Exception {
 
-        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
-        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        String sql = "SELECT DISTINCT chromosome FROM variant_map_data WHERE map_key=? ";
+        StringListQuery q = new StringListQuery(getVariantDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.compile();
-        return q.execute(new Object[]{sampleId});
+        return q.execute(new Object[]{mapKey});
     }
 
 

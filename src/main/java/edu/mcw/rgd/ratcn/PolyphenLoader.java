@@ -27,10 +27,6 @@ public class PolyphenLoader extends VariantProcessingBase {
     private String resultsDir;
     private String outputDir;
 
-    String varTable = "VARIANT";
-    String varTrTable = "VARIANT_TRANSCRIPT";
-    String polyTable = "POLYPHEN";
-
     boolean VERIFY_IF_IN_RGD = false;
     public PolyphenLoader() throws Exception {
 
@@ -42,12 +38,12 @@ public class PolyphenLoader extends VariantProcessingBase {
         PolyphenLoader instance = (PolyphenLoader) (bf.getBean("polyphenLoader"));
 
         // process args
-        int sampleId = 0;
+        int mapKey = 0;
         String chr = null;
 
         for( int i=0; i<args.length; i++ ) {
-            if( args[i].equals("--sample") ) {
-                sampleId = Integer.parseInt(args[++i]);
+            if( args[i].equals("--mapKey") ) {
+                mapKey = Integer.parseInt(args[++i]);
             }
             else if( args[i].equals("--chr") ) {
                 chr = args[++i];
@@ -64,48 +60,38 @@ public class PolyphenLoader extends VariantProcessingBase {
         }
 
         if( chr==null )
-            instance.run(sampleId);
+            instance.run(mapKey);
         else
-            instance.run(sampleId, chr);
+            instance.run(mapKey, chr);
 
         instance.getLogWriter().close();
     }
 
-    public void run(int sampleId) throws Exception {
+    public void run(int mapKey) throws Exception {
 
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
-        varTrTable = vdao.getVariantTranscriptTable(sampleId);
-        polyTable = vdao.getPolyphenTable(sampleId);
+        List<String> chromosomes = getChromosomes(mapKey);
 
-        List<String> chromosomes = getChromosomes(sampleId);
-
-        String fileNameBase = getResultsDir() + "/" + sampleId;
+        String fileNameBase = getResultsDir() + "/" + mapKey;
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".load_results.log")));
 
         for( String chr: chromosomes ) {
-            run(sampleId, chr);
+            run(mapKey, chr);
         }
     }
 
-    public void run(int sampleId, String chr) throws Exception {
-
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
-        varTrTable = vdao.getVariantTranscriptTable(sampleId);
-        polyTable = vdao.getPolyphenTable(sampleId);
+    public void run(int mapKey, String chr) throws Exception {
 
         if( this.getLogWriter()==null ) {
-            String fileNameBase = getResultsDir() + "/" + sampleId + "." + chr;
+            String fileNameBase = getResultsDir() + "/" + mapKey + "." + chr;
             this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".load_results.log")));
         }
 
         // load info file for polyphen input
         // lines: #variant_id|variant_transcript_id|locus_name|protein_acc_id|pos|ref_aa|var_aa|strand|transcript_rgd_id
         // key: protein_acc_id|pos|ref_aa|var_aa
-        List<String> infos = loadInfos(sampleId, chr);
+        List<String> infos = loadInfos(mapKey, chr);
 
-        String resultFileName = getResultsDir() + "/" + sampleId + "." + chr + ".polyphen";
+        String resultFileName = getResultsDir() + "/" + mapKey + "." + chr + ".polyphen";
         BufferedReader resultFile = new BufferedReader(new FileReader(resultFileName));
         this.getLogWriter().write("opening file "+resultFileName+"\n");
 
@@ -197,13 +183,13 @@ public class PolyphenLoader extends VariantProcessingBase {
             }
             String[] infoCols = infoLine.split("[\\t]", -1);
             polyphenRecord.setVariantId(Long.parseLong(infoCols[0]));
-            polyphenRecord.setGeneSymbol(infoCols[2]);
-            polyphenRecord.setStrand(infoCols[7]);
-            polyphenRecord.setVariantTranscriptId(Long.parseLong(infoCols[1]));
+            polyphenRecord.setGeneSymbol(infoCols[1]);
+            polyphenRecord.setStrand(infoCols[6]);
+            //polyphenRecord.setVariantTranscriptId(Long.parseLong(infoCols[1]));
             polyphenRecord.setProteinStatus("100 PERC MATCH");
 
-            if( infoCols.length>8 )
-                polyphenRecord.setTranscriptRgdId(Integer.parseInt(infoCols[8]));
+            if( infoCols.length>7 )
+                polyphenRecord.setTranscriptRgdId(Integer.parseInt(infoCols[7]));
 
             if( insertToBatch(polyphenRecord) ) {
                 rowsInserted++;
@@ -212,8 +198,8 @@ public class PolyphenLoader extends VariantProcessingBase {
             linesProcessed++;
         }
         this.getLogWriter().write("closing file "+resultFileName+"\n");
-        this.getLogWriter().write(rowsInserted+" polyphen results were loaded into db for sample "+sampleId+" and chromosome "+chr+"\n");
-        this.getLogWriter().write(linesProcessed+" polyphen results were processed for sample "+sampleId+" and chromosome "+chr+"\n\n");
+        this.getLogWriter().write(rowsInserted+" polyphen results were loaded into db for assembly "+mapKey+" and chromosome "+chr+"\n");
+        this.getLogWriter().write(linesProcessed+" polyphen results were processed for assembly "+mapKey+" and chromosome "+chr+"\n\n");
 
         resultFile.close();
     }
@@ -223,8 +209,8 @@ public class PolyphenLoader extends VariantProcessingBase {
     boolean insertToBatch( PolyphenRecord p ) throws Exception{
 
         if(VERIFY_IF_IN_RGD) {
-            String polyphenSql = "SELECT COUNT(*) FROM " + polyTable + " WHERE variant_id=? AND protein_id=? AND position=? " +
-                    " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND variant_transcript_id=? AND o_aa1=? AND o_aa2=?";
+            String polyphenSql = "SELECT COUNT(*) FROM polyphen WHERE variant_id=? AND protein_id=? AND position=? " +
+                    " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND o_aa1=? AND o_aa2=?";
             CountQuery q = new CountQuery(this.getDataSource(), polyphenSql);
             q.declareParameter(new SqlParameter(Types.VARCHAR));
             q.declareParameter(new SqlParameter(Types.VARCHAR));
@@ -233,11 +219,10 @@ public class PolyphenLoader extends VariantProcessingBase {
             q.declareParameter(new SqlParameter(Types.VARCHAR));
             q.declareParameter(new SqlParameter(Types.VARCHAR));
             q.declareParameter(new SqlParameter(Types.INTEGER));
-            q.declareParameter(new SqlParameter(Types.INTEGER));
             q.declareParameter(new SqlParameter(Types.VARCHAR));
             q.declareParameter(new SqlParameter(Types.VARCHAR));
             int cnt = q.getCount(new Object[]{p.getVariantId(), p.getRefseqProteinAccId(), p.getVarPos(), p.getRefAA(), p.getVarAA(),
-                    p.getUniprotAccId(), p.getTranscriptRgdId(), p.getVariantTranscriptId(), p.getoAA1(), p.getoAA2()});
+                    p.getUniprotAccId(), p.getTranscriptRgdId(), p.getoAA1(), p.getoAA2()});
             if (cnt != 0) {
                 // this information is already in polyphen table; nothing more to do (we do not want insert duplicates)
                 return false;
@@ -257,23 +242,23 @@ public class PolyphenLoader extends VariantProcessingBase {
     boolean insert(List<PolyphenRecord> polyphenRecordList) throws Exception {
 
 
-String polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
+String polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
                 "prediction, basis, effect, site, region, phat, score1, score2, score_delta, num_observ, num_struct_init, "+
                 "num_struct_filt, pdb_id, res_num, chain_id, ali_ide, ali_len, acc_normed, sec_str, map_region, "+
                 "delta_volume, delta_prop, b_fact, num_h_bonds, het_cont_ave_num, het_cont_min_dist, inter_cont_ave_num, "+
                 "inter_cont_min_dist, sites_cont_ave_num, sites_cont_min_dist, uniprot_acc, inverted_flag, "+
-                "transcript_rgd_id, variant_transcript_id, protein_status, o_aa1, o_aa2, pph2_class, pph2_prob, "+
+                "transcript_rgd_id, protein_status, o_aa1, o_aa2, pph2_class, pph2_prob, "+
                 "pph2_fpr, pph2_tpr, pph2_fdr, msav, transv, cpg, min_djxn, pfam_hit, id_pmax, id_psnp, id_qmin," +
                 "cod_pos, creation_date) "+
                 "VALUES(POLYPHEN_SEQ.NEXTVAL,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,"+
-                "?,?,?,?,?, ?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,SYSDATE)";
-        BatchSqlUpdate su = new BatchSqlUpdate(this.getDataSource(), polyphenSql, new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+                "?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,SYSDATE)";
+        BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), polyphenSql, new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-            Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
+            Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR},10000);
 
@@ -284,14 +269,14 @@ String polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_sym
                     p.getNumStructInit(), p.getNumStructFilt(), p.getPdbId(), p.getResNum(), p.getChainId(), p.getAliIde(), p.getAliLen(),p.getAccNormed(),
                     p.getSecStr(), p.getMapRegion(), p.getDeltaVolume(), p.getDeltaProp(), p.getbFact(), p.getNumHBonds(), p.getHetContAveNum(), p.getHetContMinDist(),
                     p.getInterContAveNum(), p.getInterContMinDist(), p.getSitesContAveNum(), p.getSitesContMinDist(), p.getUniprotAccId(), p.getStrand(),
-                    p.getTranscriptRgdId(), p.getVariantTranscriptId(), p.getProteinStatus(), p.getoAA1(), p.getoAA2(), p.getPph2Class(), p.getPph2Prob(),
+                    p.getTranscriptRgdId(), p.getProteinStatus(), p.getoAA1(), p.getoAA2(), p.getPph2Class(), p.getPph2Prob(),
                     p.getPph2Fpr(), p.getPph2Tpr(),p.getPph2Fdr(),p.getMsav(),p.getTransv(), p.getCpg(), p.getMinDjxn(), p.getPfamHit(), p.getIdPmax(),
                     p.getIdPsnp(), p.getIdQmin(), p.getCodPos());
 
         }
 
         su.flush();
-        String vartrSql = "UPDATE "+varTrTable+" SET polyphen_status=?,uniprot_id=?,protein_id=? "+
+       /* String vartrSql = "UPDATE "+varTrTable+" SET polyphen_status=?,uniprot_id=?,protein_id=? "+
                 "WHERE variant_transcript_id=?";
         su = new BatchSqlUpdate(this.getDataSource(), vartrSql, new int[]{Types.VARCHAR, Types.VARCHAR,
                 Types.VARCHAR, Types.INTEGER},10000);
@@ -299,16 +284,17 @@ String polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_sym
             su.update(p.getPrediction(), p.getUniprotAccId(), p.getRefseqProteinAccId(), p.getVariantTranscriptId());
         }
         su.flush();
+        */
         return true;
     }
 
     // load info file for polyphen input
     // lines: variant_id|variant_transcript_id|locus_name|protein_acc_id|pos|ref_aa|var_aa|strand|transcript_rgd_id
-    List<String> loadInfos(int sampleId, String chr) throws Exception {
+    List<String> loadInfos(int mapKey, String chr) throws Exception {
 
         List<String> infos = new ArrayList<String>();
 
-        String infoFileName = getOutputDir() + "/Sample" + sampleId + "." + chr + ".PolyPhenInput.info";
+        String infoFileName = getOutputDir() + "/Assembly" + mapKey + "." + chr + ".PolyPhenInput.info";
         BufferedReader infoFile = new BufferedReader(new FileReader(infoFileName));
         this.getLogWriter().write("opening file " + infoFileName + "\n");
 
@@ -335,13 +321,13 @@ String polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_sym
         while( it.hasNext() ) {
             String line = it.next();
             String[] cols = line.split("[\\t]", -1);
-            if( !cols[3].equals(proteinAccId) )
+            if( !cols[2].equals(proteinAccId) )
                 continue;
-            if( !cols[4].equals(pos) )
+            if( !cols[3].equals(pos) )
                 continue;
-            if( !cols[5].equals(refAA) )
+            if( !cols[4].equals(refAA) )
                 continue;
-            if( !cols[6].equals(varAA) )
+            if( !cols[5].equals(varAA) )
                 continue;
 
             it.remove();
@@ -351,13 +337,13 @@ String polyphenSql = "INSERT INTO "+polyTable+" (polyphen_id,variant_id,gene_sym
         return null;
     }
 
-    List<String> getChromosomes(int sampleId) throws Exception {
+    List<String> getChromosomes(int mapKey) throws Exception {
 
-        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
+        String sql = "SELECT DISTINCT chromosome FROM variant_map_data WHERE map_key=? ";
         StringListQuery q = new StringListQuery(getDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.compile();
-        return q.execute(new Object[]{sampleId});
+        return q.execute(new Object[]{mapKey});
     }
 
 

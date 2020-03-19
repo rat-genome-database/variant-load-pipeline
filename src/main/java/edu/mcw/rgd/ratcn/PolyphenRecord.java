@@ -43,7 +43,6 @@ public class PolyphenRecord {
     private String uniprotAccId;
     private String strand;
     private long transcriptRgdId;
-    private long variantTranscriptId;
     private String proteinStatus;
     private String oAA1;
     private String oAA2;
@@ -380,14 +379,6 @@ public class PolyphenRecord {
 
     public void setTranscriptRgdId(long transcriptRgdId) {
         this.transcriptRgdId = transcriptRgdId;
-    }
-
-    public long getVariantTranscriptId() {
-        return variantTranscriptId;
-    }
-
-    public void setVariantTranscriptId(long variantTranscriptId) {
-        this.variantTranscriptId = variantTranscriptId;
     }
 
     public String getProteinStatus() {
