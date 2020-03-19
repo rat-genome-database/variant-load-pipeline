@@ -158,7 +158,7 @@ public class Polyphen extends VariantProcessingBase {
         "AND t.transcript_rgd_id=vt.transcript_rgd_id \n" +
         "AND t.gene_rgd_id=g.rgd_id";
 
-        Connection conn = this.getDataSource().getConnection();
+        Connection conn = this.getVariantDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, mapKey);
         ps.setString(2, chr);
