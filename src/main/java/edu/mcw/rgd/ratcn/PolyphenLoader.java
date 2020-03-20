@@ -211,7 +211,7 @@ public class PolyphenLoader extends VariantProcessingBase {
     boolean insertToBatch( PolyphenRecord p ) throws Exception{
 
         if(VERIFY_IF_IN_RGD) {
-            String polyphenSql = "SELECT COUNT(*) FROM polyphen WHERE variant_id=? AND protein_id=? AND position=? " +
+            String polyphenSql = "SELECT COUNT(*) FROM polyphen WHERE variant_rgd_id=? AND protein_id=? AND position=? " +
                     " AND aa1=? AND aa2=? AND uniprot_acc=? AND transcript_rgd_id=? AND o_aa1=? AND o_aa2=?";
             CountQuery q = new CountQuery(this.getDataSource(), polyphenSql);
             q.declareParameter(new SqlParameter(Types.VARCHAR));
@@ -244,7 +244,7 @@ public class PolyphenLoader extends VariantProcessingBase {
     boolean insert(List<PolyphenRecord> polyphenRecordList) throws Exception {
 
 
-String polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_id,gene_symbol,protein_id,position,aa1,aa2, "+
+String polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_rgd_id,gene_symbol,protein_id,position,aa1,aa2, "+
                 "prediction, basis, effect, site, region, phat, score1, score2, score_delta, num_observ, num_struct_init, "+
                 "num_struct_filt, pdb_id, res_num, chain_id, ali_ide, ali_len, acc_normed, sec_str, map_region, "+
                 "delta_volume, delta_prop, b_fact, num_h_bonds, het_cont_ave_num, het_cont_min_dist, inter_cont_ave_num, "+
