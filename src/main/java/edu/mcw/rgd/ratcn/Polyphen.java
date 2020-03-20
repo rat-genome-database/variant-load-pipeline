@@ -151,8 +151,8 @@ public class Polyphen extends VariantProcessingBase {
         "AND v.ref_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND v.var_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL \n" +
-        "AND v.map_key = ? \n" +
-        "AND v.chromosome = ? \n" +
+        "AND vm.map_key = ? \n" +
+        "AND vm.chromosome = ? \n" +
         "AND v.rgd_id = vt.variant_rgd_id \n" +
         "AND v.rgd_id = vm.rgd_id \n" +
         "AND t.transcript_rgd_id=vt.transcript_rgd_id \n" +
