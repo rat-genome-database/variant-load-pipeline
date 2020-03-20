@@ -197,6 +197,8 @@ public class PolyphenLoader extends VariantProcessingBase {
 
             linesProcessed++;
         }
+
+        flushBatch();
         this.getLogWriter().write("closing file "+resultFileName+"\n");
         this.getLogWriter().write(rowsInserted+" polyphen results were loaded into db for assembly "+mapKey+" and chromosome "+chr+"\n");
         this.getLogWriter().write(linesProcessed+" polyphen results were processed for assembly "+mapKey+" and chromosome "+chr+"\n\n");
