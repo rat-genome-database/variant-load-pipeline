@@ -8,6 +8,7 @@ import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.process.mapping.MapManager;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -30,8 +31,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String fastaDir;
     private String logDir;
     private boolean verifyIfInRgd = false;
-    private String varTable; // variant table name: VARIANT, VARIANT_CLINVAR etc
-
+    int mapKey = 0;
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
     private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
@@ -775,18 +775,34 @@ public class VariantPostProcessing extends VariantProcessingBase {
         vt.setFullRefAAPos(fullRefAaPos);
         vt.setFullRefNucPos(fullRefNucPos);
         vt.setTripletError(tripletError);
+        String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
         if(fullRefAA != null) {
             List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
-            if (aaseqs.isEmpty()) {
+            if (!aaseqs.isEmpty()) {
+                String s = aaseqs.get(0).getSeqData();
+                if(s.equalsIgnoreCase(fullRefAA)) {
+                    fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                }
+                else{
+                    aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_"+assembly);
+                    if(aaseqs.isEmpty()) {
+                        Sequence seq = new Sequence();
+                        seq.setRgdId(transcriptRgdId);
+                        seq.setSeqType("full_ref_aa_" + assembly);
+                        seq.setSeqData(fullRefAA);
+                        fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                    }else  fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                }
+                vt.setFullRefAASeqKey(fullRefAASeqKey);
+            }else{
                 Sequence seq = new Sequence();
                 seq.setRgdId(transcriptRgdId);
                 seq.setSeqType("full_ref_aa");
                 seq.setSeqData(fullRefAA);
                 fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-            } else {
-                fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                vt.setFullRefAASeqKey(fullRefAASeqKey);
             }
-            vt.setFullRefAASeqKey(fullRefAASeqKey);
+
         }
         if(fullRefNuc != null) {
             List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
@@ -796,10 +812,24 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 seq.setSeqType("full_ref_nuc");
                 seq.setSeqData(fullRefNuc);
                 fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
+                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
             } else {
-                fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                String s = nucSeqs.get(0).getSeqData();
+                if(s.equalsIgnoreCase(fullRefNuc)) {
+                    fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                }else {
+                    nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_nuc_"+assembly);
+                    if(nucSeqs.isEmpty()) {
+                        Sequence seq = new Sequence();
+                        seq.setRgdId(transcriptRgdId);
+                        seq.setSeqType("full_ref_nuc_" + assembly);
+                        seq.setSeqData(fullRefNuc);
+                        fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
+                    }else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                }
+                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
             }
-            vt.setFullRefNucSeqKey(fullRefNucSeqKey);
+
         }
         vt.setFrameShift(frameShift);
         batch.addToBatch(vt);
