@@ -68,9 +68,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
 
-        for( Integer mapKey: mapKeys ) {
+        for( Integer key: mapKeys ) {
             try {
-                instance.run(mapKey, chr);
+                instance.mapKey = key;
+                instance.run( chr);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -81,7 +82,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     }
 
-    void run(int mapKey, String chr) throws Exception {
+    void run( String chr) throws Exception {
 
         String msg =
                 getVersion() + "\n" +
@@ -101,7 +102,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         try {
             prepareStatements();
-            processChromosomes(mapKey, chr);
+            processChromosomes( chr);
             closePreparedStatements();
         }
         catch(Exception e) {
@@ -127,7 +128,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         getDataSource().getConnection().close();
     }
 
-    void processChromosomes(int mapKey, String chrOverride) throws Exception {
+    void processChromosomes( String chrOverride) throws Exception {
 
         System.out.println("process chromosomes for mapKey "+mapKey );
         //ChrFastaFile fastaFile = new ChrFastaFile();
@@ -141,7 +142,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
             System.out.println("  chr "+chr);
 
-            processChromosome(chr, mapKey, fastaParser);
+            processChromosome(chr, fastaParser);
 
             getLogWriter().flush();
         }
@@ -153,7 +154,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     // for this chromosome and processing these variants
     //
     private VariantTranscriptBatch batch;
-    void processChromosome(String chr, int mapKey, FastaParser fastaFile) throws Exception {
+    void processChromosome(String chr, FastaParser fastaFile) throws Exception {
 
         long timestamp = System.currentTimeMillis();
         logStatusMsg("CHR " + chr);
