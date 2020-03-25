@@ -36,7 +36,7 @@ public class Polyphen extends VariantProcessingBase {
 
     boolean simpleProteinQC = false;
     boolean createFastaFile = false;
-
+    int mapKey = 0;
 
 
     public Polyphen() throws Exception {
@@ -51,10 +51,10 @@ public class Polyphen extends VariantProcessingBase {
 
         // process args
         String chr = null;
-        int mapKey = 0;
+
         for( int i=0; i<args.length; i++ ) {
             if( args[i].equals("--mapKey") ) {
-                mapKey = Integer.parseInt(args[++i]);
+                instance.mapKey = Integer.parseInt(args[++i]);
             }
             else if( args[i].equals("--chr") ) {
                 chr = args[++i];
@@ -68,15 +68,15 @@ public class Polyphen extends VariantProcessingBase {
         }
 
         if( chr==null )
-            instance.run(mapKey);
+            instance.run();
         else
-            instance.run(mapKey, chr);
+            instance.run(chr);
 
         instance.getLogWriter().close();
 
     }
 
-    public void run(int mapKey) throws Exception {
+    public void run() throws Exception {
 
         List<String> chromosomes = getChromosomes(mapKey);
 
@@ -84,11 +84,11 @@ public class Polyphen extends VariantProcessingBase {
         this.setLogWriter(new BufferedWriter(new FileWriter(fileNameBase+".log")));
 
         for( String chr: chromosomes ) {
-            run(mapKey, chr);
+            run( chr);
         }
     }
 
-    public void run(int mapKey, String chr) throws Exception {
+    public void run(String chr) throws Exception {
 
         int species = MapManager.getInstance().getMap(mapKey).getSpeciesTypeKey();
         if(species != SpeciesType.RAT)
@@ -183,9 +183,14 @@ public class Polyphen extends VariantProcessingBase {
             long variantId = rs.getLong(13);
 
             String fullRefAA = null;
-            if(fullRefAASeqKey != 0)
+            if(fullRefAASeqKey != 0 )
                 fullRefAA = getfullRefAASequences(transcriptRgdId).get(0).getSeqData();
             String strand = getStrand(transcriptRgdId, chr, startPos, mapKey);
+
+            System.out.println(variantId);
+            System.out.println(transcriptRgdId);
+            System.out.println(fullRefAA.length());
+            System.out.println(fullRefAaaPos);
 
             this.getLogWriter().append("\n\nChr " + chr + " line " + lineNr + "\n" +
                     "    variant_id = " + variantId + "\n" +
@@ -370,7 +375,11 @@ public class Polyphen extends VariantProcessingBase {
         return sequenceDAO.getObjectSequences(transcriptRgdId, "ncbi_protein");
     }
     List<Sequence> getfullRefAASequences(int transcriptRgdId) throws Exception {
-        return sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
+        String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
+        List<Sequence> seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly);
+        if(seq.isEmpty())
+            seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa");
+        return seq;
     }
 
     String getStrand(int rgdId, String chr, int pos, int mapKey) throws Exception {
