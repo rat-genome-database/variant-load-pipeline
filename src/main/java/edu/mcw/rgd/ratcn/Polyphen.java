@@ -184,7 +184,7 @@ public class Polyphen extends VariantProcessingBase {
 
             String fullRefAA = null;
             if(fullRefAASeqKey != 0 )
-                fullRefAA = getfullRefAASequences(transcriptRgdId).get(0).getSeqData();
+                fullRefAA = getfullRefAASequences(transcriptRgdId,chr).get(0).getSeqData();
             String strand = getStrand(transcriptRgdId, chr, startPos, mapKey);
 
             System.out.println(variantId);
@@ -374,9 +374,11 @@ public class Polyphen extends VariantProcessingBase {
     List<Sequence> getProteinSequences(int transcriptRgdId) throws Exception {
         return sequenceDAO.getObjectSequences(transcriptRgdId, "ncbi_protein");
     }
-    List<Sequence> getfullRefAASequences(int transcriptRgdId) throws Exception {
+    List<Sequence> getfullRefAASequences(int transcriptRgdId,String chr) throws Exception {
         String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
-        List<Sequence> seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly);
+        List<Sequence> seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly+"_"+chr);
+        if(seq.isEmpty())
+            seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly);
         if(seq.isEmpty())
             seq = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa");
         return seq;

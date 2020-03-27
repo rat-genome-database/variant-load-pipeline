@@ -253,7 +253,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                             doInsert = true;
                         } else {
                             boolean wasInserted = processTranscript(tflags, entry.transcriptRgdId, fastaFile,
-                                    varStart, varStop, variantId, refNuc, variantNuc, mapKey);
+                                    varStart, varStop, variantId, refNuc, variantNuc, mapKey,chr);
                             if (!wasInserted) {
                                 doInsert = true;
                             }
@@ -363,7 +363,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     // if a variant falls into exon utr area, it is not processed, and false is returned
     // otherwise true is returned
     boolean processTranscript(TranscriptFlags tflags, int transcriptRgdId, FastaParser fastaFile,
-                              int varStart, int varStop, long variantId, String refNuc, String varNuc, int mapKey) throws Exception {
+                              int varStart, int varStop, long variantId, String refNuc, String varNuc, int mapKey,String chr) throws Exception {
 
         if (tflags.strand != null && tflags.strand.equals("-") ) {
             getLogWriter().write("Switching UTrs as we're dealing with - strand ... \n");
@@ -494,7 +494,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
 
             return handleTranslatedProtein(refDna, varDna, variantRelPos, variantId,
-                    transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound);
+                    transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound,chr);
         } else {
             //variant lies within an exon but the part of the exon where it lies is not protein coding
             // so the variant lies within an exon that is part of a UTR
@@ -505,7 +505,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     }
 
     boolean handleTranslatedProtein(StringBuffer refDna, StringBuffer varDna, int variantRelPos, long variantId,
-            int transcriptRgdId, String transcriptLocation, String nearSpliceSite, String transcriptErrorFound) throws Exception {
+            int transcriptRgdId, String transcriptLocation, String nearSpliceSite, String transcriptErrorFound,String chr) throws Exception {
 
         String rnaRefTranslated = translate(refDna);
         String rnaVarTranslated = translate(varDna);
@@ -537,7 +537,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             insertVariantTranscript(variantId, transcriptRgdId, LRef, LVar,
                     synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
-                    rnaRefTranslated, refDna.toString(), isFrameShift);
+                    rnaRefTranslated, refDna.toString(), isFrameShift,chr);
 
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         } else {
@@ -752,14 +752,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String transcriptLocation, String nearSpliceSite) throws Exception {
         insertVariantTranscript(variantId, transcriptRgdId, null, null, null, transcriptLocation, nearSpliceSite, null,
-                null, null, null, null, null);
+                null, null, null, null, null,null);
         getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
                 + ", " + transcriptRgdId + " \n");
     }
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String refAA, String varAA, String synStatus,
                                  String transcriptLocation, String nearSpliceSite, Integer fullRefAaPos, Integer fullRefNucPos,
-                                 String tripletError, String fullRefAA, String fullRefNuc, String frameShift) throws Exception {
+                                 String tripletError, String fullRefAA, String fullRefNuc, String frameShift,String chr) throws Exception {
 
 
         int fullRefAASeqKey;
@@ -787,11 +787,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 else{
                     aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_"+assembly);
                     if(aaseqs.isEmpty()) {
-                        Sequence seq = new Sequence();
-                        seq.setRgdId(transcriptRgdId);
-                        seq.setSeqType("full_ref_aa_" + assembly);
-                        seq.setSeqData(fullRefAA);
-                        fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                        aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly+"_"+chr);
+                        if(aaseqs.isEmpty()) {
+                            Sequence seq = new Sequence();
+                            seq.setRgdId(transcriptRgdId);
+                            seq.setSeqType("full_ref_aa_" + assembly);
+                            seq.setSeqData(fullRefAA);
+                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                        }else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
                     }else  fullRefAASeqKey = aaseqs.get(0).getSeqKey();
                 }
                 vt.setFullRefAASeqKey(fullRefAASeqKey);
