@@ -1,14 +1,14 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
+import edu.mcw.rgd.dao.impl.GenomicElementDAO;
 import edu.mcw.rgd.dao.impl.RGDManagementDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.dao.spring.VariantMapper;
-import edu.mcw.rgd.datamodel.RgdId;
-import edu.mcw.rgd.datamodel.Sample;
+import edu.mcw.rgd.datamodel.*;
 import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.process.mapping.MapManager;
@@ -19,11 +19,13 @@ import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
+import org.springframework.jdbc.object.SqlUpdate;
 
 import javax.sql.DataSource;
 import java.io.*;
 import java.sql.Types;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -37,7 +39,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
     private SampleDAO sampleDAO = new SampleDAO();
     private VariantDAO dao = new VariantDAO();
-	private RGDManagementDAO managementDAO = new RGDManagementDAO();
+    private RGDManagementDAO managementDAO = new RGDManagementDAO();
     List<VariantMapData> varBatch = new ArrayList<>();
     List<VariantSampleDetail> sampleBatch = new ArrayList<>();
     HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
@@ -52,6 +54,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
         new XmlBeanDefinitionReader(bf).loadBeanDefinitions(new FileSystemResource("properties/AppConfigure.xml"));
         VariantRatLoaderFromDb instance = (VariantRatLoaderFromDb) (bf.getBean("variantRatLoader"));
+
 
         // Check incoming arguments and set Config with those the user can override
         List<String> sampleIds = new ArrayList<>();
@@ -108,59 +111,62 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
         System.out.println("Loaded from Variant Ratcn: " + variants.size());
         System.out.println("Loaded from Variant : " + loaded.size());
-
-            for (Variant variant : variants) {
-
-                VariantMapData mapData = new VariantMapData();
-                mapData.setMapKey(s.getMapKey());
-                mapData.setReferenceNucleotide(variant.getReferenceNucleotide());
-                mapData.setVariantNucleotide(variant.getVariantNucleotide());
-                mapData.setVariantType(variant.getVariantType());
-                mapData.setSpeciesTypeKey(speciesKey);
-                mapData.setChromosome(variant.getChromosome());
-                mapData.setPaddingBase(variant.getPaddingBase());
-                mapData.setStartPos(variant.getStartPos());
-                mapData.setEndPos(variant.getEndPos());
-                mapData.setGenicStatus(variant.getGenicStatus());
-                long id = 0;
-                if(loaded.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
-                    List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
-                    for(VariantMapData v: maps){
-                        if(v.getEndPos() == mapData.getEndPos()
-                                && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                                || ( v.getReferenceNucleotide() != null && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
-                                && v.getVariantType().equalsIgnoreCase(mapData.getVariantType())
-                                && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                                || (v.getVariantNucleotide() != null && v.getVariantNucleotide().equalsIgnoreCase(mapData.getVariantNucleotide()))) ) {
-                            id = v.getId();
-                            mapData.setId(id);
-                        }
+        for (Variant variant : variants) {
+            VariantMapData mapData = new VariantMapData();
+            mapData.setMapKey(s.getMapKey());
+            mapData.setReferenceNucleotide(variant.getReferenceNucleotide());
+            mapData.setVariantNucleotide(variant.getVariantNucleotide());
+            mapData.setVariantType(variant.getVariantType());
+            mapData.setSpeciesTypeKey(speciesKey);
+            mapData.setChromosome(variant.getChromosome());
+            mapData.setPaddingBase(variant.getPaddingBase());
+            mapData.setStartPos(variant.getStartPos());
+            mapData.setEndPos(variant.getEndPos());
+            mapData.setGenicStatus(variant.getGenicStatus());
+            long id = 0;
+            if(loaded.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
+                List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
+                for(VariantMapData v: maps){
+                    if(speciesKey == SpeciesType.HUMAN && v.getId() == variant.getRgdId()) {
+                        id = v.getId();
+                        mapData.setId(id);
+                    }
+                    else if(v.getEndPos() == mapData.getEndPos()
+                            && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
+                            || ( v.getReferenceNucleotide() != null && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
+                            && v.getVariantType().equalsIgnoreCase(mapData.getVariantType())
+                            && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
+                            || (v.getVariantNucleotide() != null && v.getVariantNucleotide().equalsIgnoreCase(mapData.getVariantNucleotide()))) ) {
+                        id = v.getId();
+                        mapData.setId(id);
                     }
                 }
-
-                if(id == 0){
-                    RgdId newRgdId = managementDAO.createRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
-                    id = newRgdId.getRgdId();
+            }
+            if(id == 0 ) {
+                if (speciesKey != SpeciesType.HUMAN) {
+                    id = managementDAO.insertRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
                     mapData.setId(id);
                     varBatch.add(mapData);
+                } else {
+                    mapData.setId(variant.getRgdId());
+                    varBatch.add(mapData);
                 }
-
-
-                VariantSampleDetail sampleDetail = new VariantSampleDetail();
-                sampleDetail.setSampleId(s.getId());
-                sampleDetail.setZygosityStatus(variant.getZygosityStatus());
-                sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
-                sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
-                sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
-                sampleDetail.setVariantFrequency(variant.getVariantFrequency());
-                sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
-                sampleDetail.setDepth(variant.getDepth());
-                sampleDetail.setQualityScore(variant.getQualityScore());
-                sampleDetail.setId(mapData.getId());
-                sampleBatch.add(sampleDetail);
-
-
             }
+            VariantSampleDetail sampleDetail = new VariantSampleDetail();
+            sampleDetail.setSampleId(s.getId());
+            sampleDetail.setZygosityStatus(variant.getZygosityStatus());
+            sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
+            sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
+            sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
+            sampleDetail.setVariantFrequency(variant.getVariantFrequency());
+            sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
+            sampleDetail.setDepth(variant.getDepth());
+            sampleDetail.setQualityScore(variant.getQualityScore());
+            sampleDetail.setId(mapData.getId());
+            sampleBatch.add(sampleDetail);
+
+
+        }
 
 
         insertVariants(varBatch);
@@ -168,12 +174,39 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         insertVariantSample(sampleBatch);
         varBatch.clear();
         sampleBatch.clear();
+        loadedData.clear();
+        variants.clear();
     }
 
 
+public void insertClinvarIds(int speciesKey) throws Exception{
+    GenomicElementDAO gedao = new GenomicElementDAO();
+    List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(speciesKey);
+    for(edu.mcw.rgd.ratcn.Variant v:variants){
+        GenomicElement g = gedao.getElement(v.getId());
+        if(g.getSource().equalsIgnoreCase("CLINVAR")){
+            updateClinvarIds(v.getId(),g.getSymbol());
+        }
+
+    }
+}
+    public void updateClinvarIds(int rgdId,String clinvarId) throws Exception {
+        String sql = "update variant set clinvar_id = ? where rgd_id = ?";
+        SqlUpdate su = new SqlUpdate(this.getVariantDataSource(), sql);
+        su.declareParameter(new SqlParameter(Types.INTEGER));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.update(rgdId,clinvarId);
+    }
     public List<Variant> getVariants(int sampleId, String chr) {
 
-        String sql = "SELECT * FROM variant where sample_id = ? and chromosome=?";
+        String varTable = "";
+           if( sampleId<100 ) {
+                varTable = "variant_clinvar";
+           }else if( sampleId>=6000 && sampleId<=6999 ) {
+                varTable = "variant_dog";
+           } else varTable =  "variant";
+
+        String sql = "SELECT * FROM "+varTable+" where sample_id = ? and chromosome=?";// and start_pos between 88564465 and 177128931"; //183739492
 
         VariantMapper q = new VariantMapper(getDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
@@ -191,7 +224,33 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         q.declareParameter(new SqlParameter(Types.VARCHAR));
         return q.execute(speciesKey,mapKey,chr);
     }
+    public List<edu.mcw.rgd.ratcn.Variant> getVariantObjects(int speciesKey) throws Exception{
 
+        String sql = "SELECT * FROM variant v WHERE v.species_type_key = ?";
+
+        VariantQuery q = new VariantQuery(getVariantDataSource(), sql);
+       q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(speciesKey);
+    }
+    public void insertVariant(VariantMapData v)  throws Exception{
+
+        String sql1= "INSERT INTO variant (\n" +
+                        " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY)\n" +
+                        "VALUES (\n" +
+                        "  ?,?,?,?,?,?,?)";
+
+        SqlUpdate su = new SqlUpdate(this.getVariantDataSource(), sql1);
+        su.declareParameter(new SqlParameter(Types.INTEGER));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.declareParameter(new SqlParameter(Types.VARCHAR));
+        su.declareParameter(new SqlParameter(Types.INTEGER));
+
+        su.update(v.getId(), v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
+
+    }
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
 
 
