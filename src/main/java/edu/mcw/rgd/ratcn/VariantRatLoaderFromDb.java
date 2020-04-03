@@ -5,15 +5,11 @@ import edu.mcw.rgd.dao.impl.GenomicElementDAO;
 import edu.mcw.rgd.dao.impl.RGDManagementDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.VariantDAO;
-import edu.mcw.rgd.dao.spring.CountQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.dao.spring.VariantMapper;
 import edu.mcw.rgd.datamodel.*;
 import edu.mcw.rgd.datamodel.Variant;
-import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.process.mapping.MapManager;
-import edu.mcw.rgd.util.Zygosity;
-import org.apache.log4j.Logger;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -25,8 +21,6 @@ import javax.sql.DataSource;
 import java.io.*;
 import java.sql.Types;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.zip.GZIPInputStream;
 
 /**
  * @author mtutaj
@@ -231,25 +225,6 @@ public void insertClinvarIds(int speciesKey) throws Exception{
         VariantQuery q = new VariantQuery(getVariantDataSource(), sql);
        q.declareParameter(new SqlParameter(Types.INTEGER));
         return q.execute(speciesKey);
-    }
-    public void insertVariant(VariantMapData v)  throws Exception{
-
-        String sql1= "INSERT INTO variant (\n" +
-                        " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY)\n" +
-                        "VALUES (\n" +
-                        "  ?,?,?,?,?,?,?)";
-
-        SqlUpdate su = new SqlUpdate(this.getVariantDataSource(), sql1);
-        su.declareParameter(new SqlParameter(Types.INTEGER));
-        su.declareParameter(new SqlParameter(Types.VARCHAR));
-        su.declareParameter(new SqlParameter(Types.VARCHAR));
-        su.declareParameter(new SqlParameter(Types.VARCHAR));
-        su.declareParameter(new SqlParameter(Types.VARCHAR));
-        su.declareParameter(new SqlParameter(Types.VARCHAR));
-        su.declareParameter(new SqlParameter(Types.INTEGER));
-
-        su.update(v.getId(), v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
-
     }
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
 
