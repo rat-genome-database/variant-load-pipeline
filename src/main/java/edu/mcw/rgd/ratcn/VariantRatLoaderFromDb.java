@@ -67,6 +67,8 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             }
         }
 
+        sampleIds.add("6000");
+        chrs.add("38");
         if( sampleIds.isEmpty() ) {
             System.out.println("Invalid arguments");
             return;
@@ -138,8 +140,8 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             }
             if(id == 0 ) {
                 if (speciesKey != SpeciesType.HUMAN) {
-                    id = managementDAO.insertRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
-                    mapData.setId(id);
+                    RgdId r = managementDAO.createRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
+                    mapData.setId(r.getRgdId());
                     varBatch.add(mapData);
                 } else {
                     mapData.setId(variant.getRgdId());
@@ -261,14 +263,14 @@ public void insertClinvarIds(int speciesKey) throws Exception{
 
         for( VariantMapData v: mapsData) {
             long id = v.getId();
-                sql2.update(id, v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
+            sql2.update(id, v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
         }
 
 
         sql2.flush();
 
     }
-   
+
     List<String> getChromosomes(int sampleId) throws Exception {
 
         String sql = "SELECT DISTINCT chromosome FROM variant WHERE sample_id=? ";
