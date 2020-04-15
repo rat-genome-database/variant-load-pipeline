@@ -202,6 +202,8 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
         if(id.contains(";"))
             return;
+
+
         if( !Utils.isStringEmpty(id) && id.startsWith("RGDID:")) {
             // sample ID field for ClinVar:
             // RGDID:8650299;NM_001031836.2(KCNU1):c.2736+27C>T
@@ -216,12 +218,12 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         for( int i=9; i<9+strainCount; i++ ) {
             String strain = header[i];
             processStrain(v[i], (HashMap<String, Integer>)genotypeCountMaps[i-9], ADindex, DPindex,
-                    strain, chr, pos, refNuc, alleles, rgdId, hgvsName);
+                    strain, chr, pos, refNuc, alleles, rgdId, hgvsName,id);
         }
     }
 
     void processStrain(String data, HashMap<String, Integer> genotypeCountMap, int ADindex, int DPindex, String strain,
-                       String chr, int pos, String refNuc, String alleleString, Integer rgdId, String hgvsName) throws Exception {
+                       String chr, int pos, String refNuc, String alleleString, Integer rgdId, String hgvsName,String rsId) throws Exception {
 
         // skip rows with not present data (missing genotype)
 
@@ -284,6 +286,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             }
 
             CommonFormat2Line line = new CommonFormat2Line();
+            line.setRsId(rsId);
             line.setChr(chr);
             line.setPos(pos);
             line.setRefNuc(refNuc);
