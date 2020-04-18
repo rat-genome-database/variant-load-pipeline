@@ -110,7 +110,7 @@ public class VariantLoad3 extends VariantProcessingBase {
     public void run(String sampleId, String inputFile) throws Exception {
 
         sample = sampleDAO.getSample(Integer.parseInt(sampleId));
-       
+
         System.out.println("OPTIONS:");
         System.out.println("  SampleId = "+sampleId);
         System.out.println("  InputFile = "+inputFile);
@@ -327,6 +327,7 @@ saveVariants(chr);
         }
 
         String rsId = cols[4];
+        v.setRsId(rsId);
         if( rsId!=null && !rsId.isEmpty() )
             dbSnpRowCount++;
         else
@@ -391,6 +392,7 @@ saveVariants(chr);
             mapData.setStartPos(variant.getStartPos());
             mapData.setEndPos(variant.getEndPos());
             mapData.setGenicStatus(variant.getGenicStatus());
+            mapData.setRsId(variant.getRsId());
             long id = 0;
             if(loaded.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
                 List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
