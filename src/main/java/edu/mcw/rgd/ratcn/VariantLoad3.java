@@ -92,8 +92,9 @@ public class VariantLoad3 extends VariantProcessingBase {
                 case "-v":
                     instance.VERIFY_IF_IN_RGD = true;
                     break;
-                case "chr":
+                case "--chr":
                     instance.chr = args[++i];
+                    break;
             }
         }
 
@@ -198,7 +199,7 @@ public class VariantLoad3 extends VariantProcessingBase {
 
         // cleanup
         reader.close();
-saveVariants(chr);
+saveVariants();
         long rowsSkipped = rowsAlreadyInRgd - rowsAlreadyInRgd0;
         if( rowsSkipped>0 ) {
             System.out.println("    rows skipped (already in RGD) ="+rowsSkipped);
@@ -362,9 +363,8 @@ saveVariants(chr);
 
     /**
      * save variant into database, table VARIANT
-     * @param chr String object
      */
-    public void saveVariants(String chr) throws Exception {
+    public void saveVariants() throws Exception {
         int speciesKey=SpeciesType.getSpeciesTypeKeyForMap(sample.getMapKey());
         HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
         List<VariantMapData> loaded = getVariants(speciesKey,sample.getMapKey(),chr);
