@@ -398,10 +398,10 @@ saveVariants();
                 List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
                 for(VariantMapData v: maps){
                     if(v.getEndPos() == mapData.getEndPos()
-                            && ((v.getVariantNucleotide().isEmpty() && mapData.getVariantNucleotide() == null )
+                            && ((v.getVariantNucleotide().isEmpty() && mapData.getVariantNucleotide().isEmpty())
                             || ( !v.getReferenceNucleotide().isEmpty() && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
                             && v.getVariantType().equalsIgnoreCase(mapData.getVariantType())
-                            && ((v.getVariantNucleotide().isEmpty() && mapData.getVariantNucleotide() == null )
+                            && ((v.getVariantNucleotide().isEmpty() && mapData.getVariantNucleotide().isEmpty() )
                             || (!v.getVariantNucleotide().isEmpty() && v.getVariantNucleotide().equalsIgnoreCase(mapData.getVariantNucleotide()))) ) {
                         id = v.getId();
                         mapData.setId(id);
