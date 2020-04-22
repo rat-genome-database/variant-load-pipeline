@@ -57,6 +57,8 @@ public class VariantLoad3 extends VariantProcessingBase {
     List<Variant> variants = new ArrayList<>();
     private RGDManagementDAO managementDAO = new RGDManagementDAO();
     private String chr;
+    private List<VariantMapData> loaded_cache = new ArrayList<>();
+
     public VariantLoad3() throws Exception {
         dao.setDataSource(getDataSource());
         sampleDAO.setDataSource(getDataSource());
@@ -102,7 +104,7 @@ public class VariantLoad3 extends VariantProcessingBase {
             System.out.println("Invalid arguments");
             return;
         }
-        
+
         for( int i=0; i<sampleIds.size(); i++ ) {
             instance.run(sampleIds.get(i), inputFiles.get(i));
         }
@@ -367,10 +369,11 @@ saveVariants();
     public void saveVariants() throws Exception {
         int speciesKey=SpeciesType.getSpeciesTypeKeyForMap(sample.getMapKey());
         HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
-        List<VariantMapData> loaded = getVariants(speciesKey,sample.getMapKey(),chr);
+        if(loaded_cache.size()== 0)
+            loaded_cache = getVariants(speciesKey,sample.getMapKey(),chr);
         List<VariantMapData> mdata = new ArrayList<>();
         // group variants by chr and start pos to make them searchable using keys
-        for(VariantMapData data: loaded){
+        for(VariantMapData data: loaded_cache){
             mdata = loadedData.get(data.getStartPos());
             if(mdata == null) {
                 mdata = new ArrayList<>();
@@ -379,7 +382,7 @@ saveVariants();
             loadedData.put(data.getStartPos(),mdata);
         }
         System.out.println("Loaded from Variant file: " + variants.size());
-        System.out.println("Loaded from Variant : " + loaded.size());
+        System.out.println("Loaded from Variant : " + loaded_cache.size());
         for (Variant variant : variants) {
             VariantMapData mapData = new VariantMapData();
             mapData.setMapKey(sample.getMapKey());
@@ -395,7 +398,7 @@ saveVariants();
             mapData.setRsId(variant.getRsId());
             long id = 0;
 
-            if(loaded.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
+            if(loaded_cache.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
                 List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
                 for(VariantMapData v: maps){
 
