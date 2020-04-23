@@ -179,7 +179,7 @@ public class VariantLoad3 extends VariantProcessingBase {
         long rowsAlreadyInRgd0 = rowsAlreadyInRgd;
 
         String msg = " processing "+file.getName()+" - "+new Date()+"\n";
-        getLogWriter().write(msg);
+        //getLogWriter().write(msg);
         System.out.print(msg);
 
         // open the file
@@ -211,7 +211,7 @@ saveVariants();
     }
 
     void processLine(String line) throws Exception {
-        getLogWriter().write(line+"\n");
+        //getLogWriter().write(line+"\n");
 
         String[] cols = line.split("[\t]", -1);
         String chr = cols[0];
