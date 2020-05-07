@@ -146,17 +146,14 @@ public class Polyphen extends VariantProcessingBase {
         "vm.start_pos, g.gene_symbol as region_name, t.gene_rgd_id, \n" +
         "v.ref_nuc, v.var_nuc, vt.ref_aa, vt.var_aa, vt.full_ref_aa_seq_key, vt.full_ref_aa_pos, \n" +
         "t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.rgd_id\n" +
-        "FROM variant v, variant_map_data vm, variant_transcript vt, transcripts t, genes g\n" +
+        "FROM variant v inner join variant_map_data vm on v.rgd_id = vm.rgd_id AND vm.map_key = ? AND vm.chromosome = ? \n" +
+        "inner join variant_transcript vt on v.rgd_id = vt.variant_rgd_id " +
+        "inner join transcripts t on t.transcript_rgd_id=vt.transcript_rgd_id " +
+        "inner join genes g on t.gene_rgd_id=g.rgd_id " +
         "WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*' \n" +
         "AND v.ref_nuc IN ('A', 'G', 'C', 'T') \n" +
         "AND v.var_nuc IN ('A', 'G', 'C', 'T') \n" +
-        "AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL \n" +
-        "AND vm.map_key = ? \n" +
-        "AND vm.chromosome = ? \n" +
-        "AND v.rgd_id = vt.variant_rgd_id \n" +
-        "AND v.rgd_id = vm.rgd_id \n" +
-        "AND t.transcript_rgd_id=vt.transcript_rgd_id \n" +
-        "AND t.gene_rgd_id=g.rgd_id";
+        "AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL \n";
 
         Connection conn = this.getVariantDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
