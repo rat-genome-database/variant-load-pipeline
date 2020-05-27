@@ -52,7 +52,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
         // Check incoming arguments and set Config with those the user can override
         List<String> sampleIds = new ArrayList<>();
-		List<String> chrs = new ArrayList<>();
+        List<String> chrs = new ArrayList<>();
         String chr = null;
         for( int i=0; i<args.length; i++ ) {
             String arg = args[i];
@@ -67,9 +67,8 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             }
         }
 
-        sampleIds.add("6000");
-        chrs.add("38");
-        if( sampleIds.isEmpty() ) {
+
+       if( sampleIds.isEmpty() ) {
             System.out.println("Invalid arguments");
             return;
         }
@@ -77,12 +76,12 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
 
 
-	for( int j=0; j<chrs.size(); j++ ) {
-        for( int i=0; i<sampleIds.size(); i++ ) {
+       for( int j=0; j<chrs.size(); j++ ) {
+            for( int i=0; i<sampleIds.size(); i++ ) {
                 instance.run(sampleIds.get(i),chrs.get(j));
+            }
         }
-	}
-}
+    }
 
 
 
@@ -175,17 +174,17 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
     }
 
 
-public void insertClinvarIds(int speciesKey) throws Exception{
-    GenomicElementDAO gedao = new GenomicElementDAO();
-    List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(speciesKey);
-    for(edu.mcw.rgd.ratcn.Variant v:variants){
-        GenomicElement g = gedao.getElement(v.getId());
-        if(g.getSource().equalsIgnoreCase("CLINVAR")){
-            updateClinvarIds(v.getId(),g.getSymbol());
-        }
+    public void insertClinvarIds(int speciesKey) throws Exception{
+        GenomicElementDAO gedao = new GenomicElementDAO();
+        List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(speciesKey);
+        for(edu.mcw.rgd.ratcn.Variant v:variants){
+            GenomicElement g = gedao.getElement(v.getId());
+            if(g.getSource().equalsIgnoreCase("CLINVAR")){
+                updateClinvarIds(v.getId(),g.getSymbol());
+            }
 
+        }
     }
-}
     public void updateClinvarIds(int rgdId,String clinvarId) throws Exception {
         String sql = "update variant set clinvar_id = ? where rgd_id = ?";
         SqlUpdate su = new SqlUpdate(this.getVariantDataSource(), sql);
@@ -196,11 +195,11 @@ public void insertClinvarIds(int speciesKey) throws Exception{
     public List<Variant> getVariants(int sampleId, String chr) {
 
         String varTable = "";
-           if( sampleId<100 ) {
-                varTable = "variant_clinvar";
-           }else if( sampleId>=6000 && sampleId<=6999 ) {
-                varTable = "variant_dog";
-           } else varTable =  "variant";
+        if( sampleId<100 ) {
+            varTable = "variant_clinvar";
+        }else if( sampleId>=6000 && sampleId<=6999 ) {
+            varTable = "variant_dog";
+        } else varTable =  "variant";
 
         String sql = "SELECT * FROM "+varTable+" where sample_id = ? and chromosome=?";// and start_pos between 88564465 and 177128931"; //183739492
 
@@ -225,7 +224,7 @@ public void insertClinvarIds(int speciesKey) throws Exception{
         String sql = "SELECT * FROM variant v WHERE v.species_type_key = ?";
 
         VariantQuery q = new VariantQuery(getVariantDataSource(), sql);
-       q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.declareParameter(new SqlParameter(Types.INTEGER));
         return q.execute(speciesKey);
     }
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
