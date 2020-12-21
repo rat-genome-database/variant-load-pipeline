@@ -25,6 +25,7 @@ public class VariantTranscript {
     private Integer fullRefAAPos;
     private String tripletError;
     private String frameShift;
+    private int mapKey;
 
     public long getId() {
         return id;
@@ -152,5 +153,13 @@ public class VariantTranscript {
 
     public void setFullRefAASeqKey(int fullRefAASeqKey) {
         this.fullRefAASeqKey = fullRefAASeqKey;
+    }
+
+    public int getMapKey() {
+        return mapKey;
+    }
+
+    public void setMapKey(int mapKey) {
+        this.mapKey = mapKey;
     }
 }

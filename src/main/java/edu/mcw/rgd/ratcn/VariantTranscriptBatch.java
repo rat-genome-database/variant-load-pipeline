@@ -116,13 +116,13 @@ public class VariantTranscriptBatch {
                 "INSERT INTO VARIANT_TRANSCRIPT \n" +
                 "( VARIANT_RGD_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
-                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA_SEQ_KEY, FULL_REF_NUC_SEQ_KEY, FRAMESHIFT)\n" +
+                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA_SEQ_KEY, FULL_REF_NUC_SEQ_KEY, FRAMESHIFT,MAP_KEY)\n" +
                 "VALUES( ?, ?, ?,\n" +
                 " ?, ?, ?, ?,\n" +
-                "?,?,?,?,?,?)",
+                "?,?,?,?,?,?,?)",
                 new int[]{Types.INTEGER, Types.VARCHAR, Types.VARCHAR,
                         Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
-                        Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR
+                        Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR,Types.INTEGER
                 },10000);
 
         bsu.compile();
@@ -142,7 +142,8 @@ public class VariantTranscriptBatch {
                 vt.getTripletError(),
                 vt.getFullRefAASeqKey(),
                 vt.getFullRefNucSeqKey(),
-                vt.getFrameShift()
+                vt.getFrameShift(),
+                vt.getMapKey()
             );
 
 

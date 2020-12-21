@@ -777,7 +777,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
         vt.setFullRefNucPos(fullRefNucPos);
         vt.setTripletError(tripletError);
         String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
+
         if(fullRefAA != null) {
+            Sequence seq = new Sequence();
+            seq.setRgdId(transcriptRgdId);
+            seq.setSeqData(fullRefAA);
             List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
             if (!aaseqs.isEmpty()) {
                 String s = aaseqs.get(0).getSeqData();
@@ -789,20 +793,22 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     if(aaseqs.isEmpty()) {
                         aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly+"_"+chr);
                         if(aaseqs.isEmpty()) {
-                            Sequence seq = new Sequence();
-                            seq.setRgdId(transcriptRgdId);
                             seq.setSeqType("full_ref_aa_" + assembly);
-                            seq.setSeqData(fullRefAA);
                             fullRefAASeqKey = sequenceDAO.insertSequence(seq);
                         }else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                    }else  fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                    }else {
+                        s = aaseqs.get(0).getSeqData();
+                        if (s.equalsIgnoreCase(fullRefAA)) {
+                            fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                        }else {
+                            seq.setSeqType("full_ref_aa_" + assembly+"_"+chr);
+                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                        }
+                    }
                 }
                 vt.setFullRefAASeqKey(fullRefAASeqKey);
             }else{
-                Sequence seq = new Sequence();
-                seq.setRgdId(transcriptRgdId);
                 seq.setSeqType("full_ref_aa");
-                seq.setSeqData(fullRefAA);
                 fullRefAASeqKey = sequenceDAO.insertSequence(seq);
                 vt.setFullRefAASeqKey(fullRefAASeqKey);
             }
@@ -810,11 +816,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         if(fullRefNuc != null) {
             List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
+            Sequence seq = new Sequence();
+            seq.setSeqData(fullRefNuc);
+            seq.setRgdId(transcriptRgdId);
             if (nucSeqs.isEmpty()) {
-                Sequence seq = new Sequence();
-                seq.setRgdId(transcriptRgdId);
                 seq.setSeqType("full_ref_nuc");
-                seq.setSeqData(fullRefNuc);
                 fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
                 vt.setFullRefNucSeqKey(fullRefNucSeqKey);
             } else {
@@ -824,10 +830,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 }else {
                     nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_nuc_"+assembly);
                     if(nucSeqs.isEmpty()) {
-                        Sequence seq = new Sequence();
-                        seq.setRgdId(transcriptRgdId);
                         seq.setSeqType("full_ref_nuc_" + assembly);
-                        seq.setSeqData(fullRefNuc);
                         fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
                     }else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
                 }
@@ -836,6 +839,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         }
         vt.setFrameShift(frameShift);
+        vt.setMapKey(mapKey);
         batch.addToBatch(vt);
     }
 
