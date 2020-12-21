@@ -22,7 +22,7 @@ import java.util.*;
  */
 public class VariantTranscriptBatch {
 
-    public static final int BATCH_SIZE = 1000;
+    public static final int BATCH_SIZE = 10000;
 
     // cache of records accumulated in the batch
     private List<VariantTranscript> batch = new ArrayList<>();
