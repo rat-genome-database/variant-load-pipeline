@@ -755,6 +755,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 null, null, null, null, null,null);
         getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
                 + ", " + transcriptRgdId + " \n");
+        logStatusMsg("		Found variant for variantId " + variantId
+                + ", transcriptId " + transcriptRgdId + " \n");
     }
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String refAA, String varAA, String synStatus,
