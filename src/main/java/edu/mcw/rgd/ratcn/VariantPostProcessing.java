@@ -191,6 +191,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         // Iterate over all the variants for the given sample_id and chr
         //
         ResultSet variantRow = getVariantResultSet(mapKey, chr);
+
         while( variantRow.next() ) {
             long variantId = variantRow.getLong(1);
             int varStart = variantRow.getInt(2);
@@ -278,6 +279,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
         logStatusMsg(msg);
+        logStatusMsg("Total variants for assembly="+mapKey+" chr"+chr+" = "+totalCount);
     }
 
     void processFeatures(int transcriptRgdId, String chr, int mapKey, TranscriptFlags tflags, int varStart, int varStop, int totalExonCount) throws Exception {
@@ -755,8 +757,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 null, null, null, null, null,null);
         getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
                 + ", " + transcriptRgdId + " \n");
-        logStatusMsg("		Found variant for variantId " + variantId
-                + ", transcriptId " + transcriptRgdId + " \n");
+        //logStatusMsg("		Found variant for variantId " + variantId + ", transcriptId " + transcriptRgdId + " \n");
     }
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String refAA, String varAA, String synStatus,
