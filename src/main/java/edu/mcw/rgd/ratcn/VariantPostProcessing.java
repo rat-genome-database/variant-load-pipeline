@@ -6,6 +6,7 @@ import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -31,6 +32,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String varTable; // variant table name: VARIANT, VARIANT_CLINVAR etc
 
     private GeneCache geneCache = new GeneCache();
+
+    private Logger logDebug = Logger.getLogger("debug");
 
     public static void main(String[] args) throws Exception {
 
@@ -254,6 +257,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 rgdRow.close();
             }
             totalCount += 1;
+
+            if( totalCount%10000 == 1 ) {
+                String m = totalCount + ". sample=" + sample.getId() + " chr" + chr + "  VT rows inserted=" + batch.getRowsCommitted()
+                        + ", up-to-date=" + batch.getRowsUpToDate()
+                        + ", updated=" + batch.getRowsUpdated()
+                        + ", elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
+                logDebug.debug(m);
+            }
         }
         variantRow.close();
 
@@ -261,6 +272,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         String msg = "sample="+sample.getId()+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
                 +", up-to-date="+batch.getRowsUpToDate()
+                +", updated="+batch.getRowsUpdated()
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
         logStatusMsg(msg);

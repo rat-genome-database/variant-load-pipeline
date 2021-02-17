@@ -3,13 +3,12 @@ package edu.mcw.rgd.ratcn;
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
+import edu.mcw.rgd.process.Utils;
+import org.apache.log4j.Logger;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Types;
+import java.sql.*;
 import java.util.*;
 
 /**
@@ -19,13 +18,16 @@ import java.util.*;
  */
 public class VariantTranscriptBatch {
 
-    public static final int BATCH_SIZE = 1000;
+    private Logger logDebug = Logger.getLogger("debug");
+
+    public static final int BATCH_SIZE = 500;
 
     // cache of records accumulated in the batch
     private List<VariantTranscript> batch = new ArrayList<>();
 
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;
+    private int rowsUpdated = 0;
     private boolean verifyIfInRgd = false;
     private String tableNameVT;
     private String tableNameV;
@@ -42,6 +44,10 @@ public class VariantTranscriptBatch {
 
     public int getRowsUpToDate() {
         return rowsUpToDate;
+    }
+
+    public int getRowsUpdated() {
+        return rowsUpdated;
     }
 
     /// preload existing variant transcript data for the entire chromosome
@@ -152,8 +158,13 @@ public class VariantTranscriptBatch {
                 String key = vt.getVariantId()+","+vt.getTranscriptRgdId();
                 List results = vtData.get(key);
                 if( results!=null ) {
-                    rowsUpToDate++;
                     it.remove();
+                    Long vtid = (Long) results.get(0);
+                    if( updateVariantTranscript(vt, vtid) ) {
+                        rowsUpdated++;
+                    } else {
+                        rowsUpToDate++;
+                    }
                 }
             }
         } else {
@@ -168,15 +179,120 @@ public class VariantTranscriptBatch {
             Iterator<VariantTranscript> it = batch.iterator();
             while (it.hasNext()) {
                 VariantTranscript vt = it.next();
-                List results = q.execute(vt.getVariantId(), vt.getTranscriptRgdId());
+                List<String> results = q.execute(vt.getVariantId(), vt.getTranscriptRgdId());
                 if (!results.isEmpty()) {
-                    rowsUpToDate++;
+                    long vtid = Long.parseLong(results.get(0));
                     it.remove();
+                    if( updateVariantTranscript(vt, vtid) ) {
+                        rowsUpdated++;
+                    } else {
+                        rowsUpToDate++;
+                    }
                 }
             }
         }
 
         insertRowsNoVerify();
+    }
+
+    boolean updateVariantTranscript(VariantTranscript vt, long vtid) throws Exception {
+
+        //logDebug.debug("  vtid="+vtid);
+
+        boolean updateNeeded = false;
+
+        try( Connection conn = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection() ) {
+            String sql = "SELECT * FROM " + tableNameVT + " WHERE variant_transcript_id=?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setLong(1, vtid);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+
+                // check if update need
+                String refAa = rs.getString("ref_aa");
+                boolean refAaOK = Utils.stringsAreEqual(vt.getRefAA(), refAa);
+                String varAa = rs.getString("var_aa");
+                boolean varAaOK = Utils.stringsAreEqual(vt.getVarAA(), varAa);
+                String geneSplice = rs.getString("genesplice_status");
+                boolean geneSpliceOK = Utils.stringsAreEqual(vt.getGenespliceStatus(), geneSplice);
+                String synStatus = rs.getString("syn_status");
+                boolean synStatusOK = Utils.stringsAreEqual(vt.getSynStatus(), synStatus);
+                String locationName = rs.getString("location_name");
+                boolean locationNameOK = Utils.stringsAreEqual(vt.getLocationName(), locationName);
+                String nearSpliceSite = rs.getString("near_splice_site");
+                boolean nearSpliceSiteOK = Utils.stringsAreEqual(vt.getNearSpliceSite(), nearSpliceSite);
+                String fullRefNuc = rs.getString("full_ref_nuc");
+                boolean fullRefNucOK = Utils.stringsAreEqual(vt.getFullRefNuc(), fullRefNuc);
+                String fullRefAa = rs.getString("full_ref_aa");
+                boolean fullRefAaOK = Utils.stringsAreEqual(vt.getFullRefAA(), fullRefAa);
+                int fullRefNucPos = rs.getInt("full_ref_nuc_pos");
+                boolean fullRefNucPosOK = Utils.intsAreEqual(vt.getFullRefNucPos(), fullRefNucPos);
+                int fullRefAaPos = rs.getInt("full_ref_aa_pos");
+                boolean fullRefAaPosOK = Utils.intsAreEqual(vt.getFullRefAAPos(), fullRefAaPos);
+
+                String uniprotId = rs.getString("uniprot_id");
+                boolean uniprotIdOK = Utils.stringsAreEqual(vt.getUniprotId(), uniprotId);
+                String proteinId = rs.getString("protein_id");
+                boolean proteinIdOK = Utils.stringsAreEqual(vt.getProteinId(), proteinId);
+                String tripletError = rs.getString("triplet_error");
+                boolean tripletErrorOK = Utils.stringsAreEqual(vt.getTripletError(), tripletError);
+                String frameshift = rs.getString("frameshift");
+                boolean frameshiftOK = Utils.stringsAreEqual(vt.getFrameShift(), frameshift);
+
+                if (refAaOK && varAaOK && geneSpliceOK && synStatusOK && locationNameOK && nearSpliceSiteOK
+                        && fullRefNucOK && fullRefAaOK && fullRefNucPosOK && fullRefAaPosOK
+                        && uniprotIdOK && proteinIdOK && tripletErrorOK && frameshiftOK) {
+
+                    updateNeeded = false; // incoming data the same as in RGD
+                } else {
+                    updateNeeded = true;
+                }
+            }
+            rs.close();
+            ps.close();
+
+            if (updateNeeded) {
+
+                String sql2 = "UPDATE " + tableNameVT + " SET " +
+                        "ref_aa=?, var_aa=?, genesplice_status=?, syn_status=?, location_name=?, near_splice_site=?, " +
+                        "full_ref_nuc=?, full_ref_aa=?, full_ref_nuc_pos=?, full_ref_aa_pos=?, " +
+                        "uniprot_id=?, protein_id=?, triplet_error=?, frameshift=? " +
+                        " WHERE variant_transcript_id=?";
+
+                PreparedStatement ps2 = conn.prepareStatement(sql2);
+                ps2.setString(1, vt.getRefAA());
+                ps2.setString(2, vt.getVarAA());
+                ps2.setString(3, vt.getGenespliceStatus());
+                ps2.setString(4, vt.getSynStatus());
+                ps2.setString(5, vt.getLocationName());
+                ps2.setString(6, vt.getNearSpliceSite());
+
+                ps2.setString(7, vt.getFullRefNuc());
+                ps2.setString(8, vt.getFullRefAA());
+                if( vt.getFullRefNucPos()==null ) {
+                    ps2.setNull(9, Types.INTEGER);
+                } else {
+                    ps2.setInt(9, vt.getFullRefNucPos());
+                }
+                if( vt.getFullRefAAPos()==null ) {
+                    ps2.setNull(10, Types.INTEGER);
+                } else {
+                    ps2.setInt(10, vt.getFullRefAAPos());
+                }
+
+                ps2.setString(11, vt.getUniprotId());
+                ps2.setString(12, vt.getProteinId());
+                ps2.setString(13, vt.getTripletError());
+                ps2.setString(14, vt.getFrameShift());
+
+                ps2.setLong(15, vtid);
+
+                ps2.executeUpdate();
+                ps2.close();
+            }
+        }
+        return updateNeeded;
     }
 
     public boolean isVerifyIfInRgd() {

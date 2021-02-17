@@ -33,32 +33,42 @@ public class GenicStatusFixUp {
     MapDAO mapDAO = new MapDAO();
 
     void run(int startSampleId, int endSampleId) throws Exception {
+        for( int sampleId=startSampleId; sampleId<=endSampleId; sampleId++ ) {
+            run(sampleId);
+        }
+    }
+
+    void run(int sampleId) throws Exception {
         long linesProcessed = 0;
         long linesUpToDate = 0;
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        Set<String> samples = new TreeSet<String>();
+        Set<Integer> samples = new TreeSet<Integer>();
 
         DataSource ds = DataSourceFactory.getInstance().getCarpeNovoDataSource();
         Connection conn = ds.getConnection();
+        int mapKey = getMapKey(sampleId, ds);
 
         UpdateVariantStatus variantStatusUpdater = new UpdateVariantStatus();
 
-        String sql2 = "SELECT /*+ FIRST_ROWS */ v.variant_id, v.chromosome, v.start_pos, v.genic_status, v.sample_id FROM variant v "+
-                "WHERE v.sample_id BETWEEN ? AND ?";
+        String sqlGeneLoci = "SELECT genic_status FROM gene_loci WHERE map_key=? AND chromosome=? AND pos=?";
+        PreparedStatement psGeneLoci = conn.prepareStatement(sqlGeneLoci);
+
+        String sql2 = "SELECT /*+ FIRST_ROWS */ v.variant_id, v.chromosome, v.start_pos, v.genic_status FROM variant v "+
+                "WHERE v.sample_id=?";
         PreparedStatement ps = conn.prepareStatement(sql2);
-        ps.setInt(1, startSampleId);
-        ps.setInt(2, endSampleId);
+        ps.setInt(1, sampleId);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             long varId = rs.getLong(1);
             String chr = rs.getString(2);
             int pos = rs.getInt(3);
             String genicStatusInDb = rs.getString(4);
-            String sampleId = rs.getString(5);
-            int mapKey = getMapKey(sampleId, ds);
 
             // determine genic status
-            String genicStatusComputed = getGenicStatus(mapKey, chr, pos);
+            String genicStatusComputed = getGenicStatus(mapKey, chr, pos, psGeneLoci);
+            if( genicStatusComputed==null ) {
+                genicStatusComputed = getGenicStatus(mapKey, chr, pos);
+            }
             if( genicStatusComputed==null || Utils.stringsAreEqualIgnoreCase(genicStatusComputed, genicStatusInDb) ) {
                 linesUpToDate++;
             } else {
@@ -87,17 +97,17 @@ public class GenicStatusFixUp {
     }
 
 
-    int getMapKey(String sampleId, DataSource ds) throws Exception {
+    int getMapKey(int sampleId, DataSource ds) {
         Integer mapKey = sampleIdToMapKeyMap.get(sampleId);
         if( mapKey==null ) {
             SampleDAO sampleDAO = new SampleDAO();
             sampleDAO.setDataSource(ds);
-            mapKey = sampleDAO.getSample(Integer.parseInt(sampleId)).getMapKey();
+            mapKey = sampleDAO.getSample(sampleId).getMapKey();
             sampleIdToMapKeyMap.put(sampleId, mapKey);
         }
         return mapKey;
     }
-    Map<String,Integer> sampleIdToMapKeyMap = new HashMap<String, Integer>();
+    Map<Integer,Integer> sampleIdToMapKeyMap = new HashMap<>();
 
 
     String getGenicStatus(int mapKey, String chr, int pos) throws Exception {
@@ -106,5 +116,19 @@ public class GenicStatusFixUp {
 
     boolean isGenic(int mapKey, String chr, int pos) throws Exception {
         return !mapDAO.getMapDataWithinRange(pos, pos, chr, mapKey, 0).isEmpty();
+    }
+
+    String getGenicStatus(int mapKey, String chr, int pos, PreparedStatement ps) throws Exception {
+
+        ps.setInt(1, mapKey);
+        ps.setString(2, chr);
+        ps.setInt(3, pos);
+        ResultSet rs = ps.executeQuery();
+        String result = null;
+        if( rs.next() ) {
+            result = rs.getString(1);
+        }
+        rs.close();
+        return result;
     }
 }
