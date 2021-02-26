@@ -66,7 +66,7 @@ public class Polyphen extends VariantProcessingBase {
                 instance.createFastaFile = true;
             }
         }
-
+        
         if( chr==null )
             instance.run();
         else
@@ -180,14 +180,14 @@ public class Polyphen extends VariantProcessingBase {
             long variantId = rs.getLong(13);
 
             String fullRefAA = null;
-            if(fullRefAASeqKey != 0 )
-                fullRefAA = getfullRefAASequences(transcriptRgdId,chr).get(0).getSeqData();
+            if(fullRefAASeqKey != 0 ) {
+                //fullRefAA = getfullRefAASequences(transcriptRgdId,chr).get(0).getSeqData();
+                fullRefAA = sequenceDAO.getObjectSequencesBySeqKey(fullRefAASeqKey).get(0).getSeqData();
+            }
             String strand = getStrand(transcriptRgdId, chr, startPos, mapKey);
 
-            System.out.println(variantId);
-            System.out.println(transcriptRgdId);
-            System.out.println(fullRefAA.length());
-            System.out.println(fullRefAaaPos);
+            System.out.println(variantId + ","+transcriptRgdId + "," +fullRefAA.length() + "," + fullRefAaaPos);
+
 
             this.getLogWriter().append("\n\nChr " + chr + " line " + lineNr + "\n" +
                     "    variant_id = " + variantId + "\n" +
