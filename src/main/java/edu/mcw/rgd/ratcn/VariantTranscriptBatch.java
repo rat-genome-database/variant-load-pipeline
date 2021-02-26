@@ -25,7 +25,18 @@ public class VariantTranscriptBatch {
     public static final int BATCH_SIZE = 10000;
 
     // cache of records accumulated in the batch
-    private List<VariantTranscript> batch = new ArrayList<>();
+    private Set<VariantTranscript> batch = new TreeSet<>(new Comparator() {
+        @Override
+        public int compare(Object o1, Object o2) {
+            VariantTranscript vt1 = (VariantTranscript) o1;
+            VariantTranscript vt2 = (VariantTranscript) o2;
+            if(vt1.getVariantId() == vt2.getVariantId()) {
+                if(vt1.getTranscriptRgdId() == vt2.getTranscriptRgdId())
+                    return 0;
+            }
+            return 1;
+        }
+    });
 
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;
@@ -46,8 +57,8 @@ public class VariantTranscriptBatch {
     /// preload existing variant transcript data for the entire chromosome
     /// useful for ClinVar data
     public int preloadVariantTranscriptData(int mapKey, String chr) throws Exception {
-        String sql = "SELECT variant_id,transcript_rgd_id FROM variant_transcript vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_id AND v.map_key=? AND v.chromosome=?)";
+        String sql = "SELECT variant_rgd_id,transcript_rgd_id FROM variant_transcript vt \n" +
+                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_id AND vt.map_key=? AND v.chromosome=?)";
 
         vtData = new HashMap();
         Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
