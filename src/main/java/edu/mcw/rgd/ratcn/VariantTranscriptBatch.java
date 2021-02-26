@@ -33,8 +33,17 @@ public class VariantTranscriptBatch {
             if(vt1.getVariantId() == vt2.getVariantId()) {
                 if(vt1.getTranscriptRgdId() == vt2.getTranscriptRgdId())
                     return 0;
+                else{
+                    if(vt1.getTranscriptRgdId() < vt2.getTranscriptRgdId())
+                        return 1;
+                    else return -1;
+                }
+            }else {
+                if(vt1.getVariantId() < vt2.getVariantId())
+                    return 1;
+                else return -1;
             }
-            return 1;
+
         }
     });
 
