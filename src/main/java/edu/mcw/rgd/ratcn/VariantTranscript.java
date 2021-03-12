@@ -19,14 +19,13 @@ public class VariantTranscript {
     private String synStatus;
     private String locationName;
     private String nearSpliceSite;
-    private String fullRefNuc;
+    private int fullRefNucSeqKey;
     private Integer fullRefNucPos;
-    private String fullRefAA;
+    private int fullRefAASeqKey;
     private Integer fullRefAAPos;
-    private String uniprotId;
-    private String proteinId;
     private String tripletError;
     private String frameShift;
+    private int mapKey;
 
     public long getId() {
         return id;
@@ -108,14 +107,6 @@ public class VariantTranscript {
         this.nearSpliceSite = nearSpliceSite;
     }
 
-    public String getFullRefNuc() {
-        return fullRefNuc;
-    }
-
-    public void setFullRefNuc(String fullRefNuc) {
-        this.fullRefNuc = fullRefNuc;
-    }
-
     public Integer getFullRefNucPos() {
         return fullRefNucPos;
     }
@@ -124,36 +115,12 @@ public class VariantTranscript {
         this.fullRefNucPos = fullRefNucPos;
     }
 
-    public String getFullRefAA() {
-        return fullRefAA;
-    }
-
-    public void setFullRefAA(String fullRefAA) {
-        this.fullRefAA = fullRefAA;
-    }
-
     public Integer getFullRefAAPos() {
         return fullRefAAPos;
     }
 
     public void setFullRefAAPos(Integer fullRefAAPos) {
         this.fullRefAAPos = fullRefAAPos;
-    }
-
-    public String getUniprotId() {
-        return uniprotId;
-    }
-
-    public void setUniprotId(String uniprotId) {
-        this.uniprotId = uniprotId;
-    }
-
-    public String getProteinId() {
-        return proteinId;
-    }
-
-    public void setProteinId(String proteinId) {
-        this.proteinId = proteinId;
     }
 
     public String getTripletError() {
@@ -170,5 +137,29 @@ public class VariantTranscript {
 
     public void setFrameShift(String frameShift) {
         this.frameShift = frameShift;
+    }
+
+    public int getFullRefNucSeqKey() {
+        return fullRefNucSeqKey;
+    }
+
+    public void setFullRefNucSeqKey(int fullRefNucSeqKey) {
+        this.fullRefNucSeqKey = fullRefNucSeqKey;
+    }
+
+    public int getFullRefAASeqKey() {
+        return fullRefAASeqKey;
+    }
+
+    public void setFullRefAASeqKey(int fullRefAASeqKey) {
+        this.fullRefAASeqKey = fullRefAASeqKey;
+    }
+
+    public int getMapKey() {
+        return mapKey;
+    }
+
+    public void setMapKey(int mapKey) {
+        this.mapKey = mapKey;
     }
 }

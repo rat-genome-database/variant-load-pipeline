@@ -11,6 +11,7 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.*;
 import java.util.*;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 /**
  * @author mtutaj
@@ -107,7 +108,14 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
     public void run() throws Exception {
 
-        BufferedReader reader = Utils.openReader(vcfFile);
+        BufferedReader reader;
+
+        if( vcfFile.endsWith(".gz") ) {
+            reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(vcfFile))));
+        } else {
+            reader = new BufferedReader(new FileReader(vcfFile));
+        }
+
         String line;
 
         // skip all header lines, starting with '##'
@@ -153,7 +161,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
     void processLine(String line, int strainCount, String[] header) throws Exception {
 
         String[] v = line.split("[\\t]", -1);
-
         if (v.length == 0 || v[0].length() == 0 || v[0].charAt(0) == '#')
             //skip lines with "#"
             return;
@@ -165,11 +172,17 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             return;
         }
 
+
         // variant pos
         int pos = Integer.parseInt(v[1]);
 
+
         String refNuc = v[3];
         String alleles = v[4];
+
+        if(alleles.contains(","))
+            return;
+
 
         // get index of GQ - genotype quality
         String[] format = v[8].split(":");
@@ -186,6 +199,11 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         Integer rgdId = null;
         String hgvsName = null;
         String id = v[2];
+
+        if(id.contains(";"))
+            return;
+
+
         if( !Utils.isStringEmpty(id) && id.startsWith("RGDID:")) {
             // sample ID field for ClinVar:
             // RGDID:8650299;NM_001031836.2(KCNU1):c.2736+27C>T
@@ -197,21 +215,25 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
                 System.out.println("missing semicolon");
             }
         }
-
         for( int i=9; i<9+strainCount; i++ ) {
             String strain = header[i];
             processStrain(v[i], (HashMap<String, Integer>)genotypeCountMaps[i-9], ADindex, DPindex,
-                    strain, chr, pos, refNuc, alleles, rgdId, hgvsName);
+                    strain, chr, pos, refNuc, alleles, rgdId, hgvsName,id);
         }
     }
 
     void processStrain(String data, HashMap<String, Integer> genotypeCountMap, int ADindex, int DPindex, String strain,
-                       String chr, int pos, String refNuc, String alleleString, Integer rgdId, String hgvsName) throws Exception {
+                       String chr, int pos, String refNuc, String alleleString, Integer rgdId, String hgvsName,String rsId) throws Exception {
 
         // skip rows with not present data (missing genotype)
-        if( !handleGenotype(data.substring(0, 3), genotypeCountMap) )
-            return;
 
+        if(data.length() >= 3) {
+            if (!handleGenotype(data.substring(0, 3), genotypeCountMap))
+                return;
+        } else {
+            if (!handleGenotype(data, genotypeCountMap))
+                return;
+        }
         // read counts for all alleles, as determined by genotype
         int[] readCount = null;
         String[] arrValues = data.split(":"); // format is in 0/1:470,63:533:99:507,0,3909
@@ -264,6 +286,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             }
 
             CommonFormat2Line line = new CommonFormat2Line();
+            line.setRsId(rsId);
             line.setChr(chr);
             line.setPos(pos);
             line.setRefNuc(refNuc);
@@ -360,9 +383,9 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             genotypeCount ++;
         genotypeCountMap.put(genotype, genotypeCount);
 
-        if( genotype.equals("./.") )
+        if( genotype.equals("./.") || genotype.equals("."))
             return false;
-        if( genotype.equals("0/0") )
+        if( genotype.equals("0/0") || genotype.equals("0"))
             return false;
         return true;
     }

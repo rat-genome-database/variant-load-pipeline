@@ -149,6 +149,7 @@ public class Vcf8ColToCommonFormat2Converter extends VcfToCommonFormat2Base {
 
         String refNuc = v[3];
         String alleles = v[4];
+        String rsId = v[2];
 
         // build map of names and values from INFO field
         // f.e.: END=64603;DP=16;AC=9,7
@@ -160,10 +161,10 @@ public class Vcf8ColToCommonFormat2Converter extends VcfToCommonFormat2Base {
             }
         }
 
-        processStrain(data, chr, pos, refNuc, alleles);
+        processStrain(data, chr, pos, refNuc, alleles,rsId);
     }
 
-    void processStrain(Map<String,String> data, String chr, int pos, String refNuc, String alleleString) throws Exception {
+    void processStrain(Map<String,String> data, String chr, int pos, String refNuc, String alleleString,String rsId) throws Exception {
 
         int totalDepth = Integer.parseInt(data.get("DP"));
 
@@ -210,6 +211,7 @@ public class Vcf8ColToCommonFormat2Converter extends VcfToCommonFormat2Base {
             }
 
             CommonFormat2Line line = new CommonFormat2Line();
+            line.setRsId(rsId);
             line.setChr(chr);
             line.setPos(pos);
             line.setRefNuc(refNuc);

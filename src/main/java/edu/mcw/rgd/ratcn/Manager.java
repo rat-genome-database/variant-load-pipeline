@@ -27,6 +27,9 @@ public class Manager {
         // run tool in question
         try {
             switch (tool) {
+                case "VariantRatLoaderFromDb":
+                    VariantRatLoaderFromDb.main(toolArgs);
+                    break;
                 case "VcfConverter2":
                     VcfToCommonFormat2Converter.main(toolArgs);
                     break;

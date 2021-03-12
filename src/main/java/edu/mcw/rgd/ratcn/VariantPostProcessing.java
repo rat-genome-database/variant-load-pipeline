@@ -1,12 +1,14 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.impl.SampleDAO;
+import edu.mcw.rgd.dao.impl.SequenceDAO;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sample;
+import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
-import org.apache.log4j.Logger;
+import edu.mcw.rgd.process.mapping.MapManager;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -29,11 +31,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String fastaDir;
     private String logDir;
     private boolean verifyIfInRgd = false;
-    private String varTable; // variant table name: VARIANT, VARIANT_CLINVAR etc
-
+    int mapKey = 0;
     private GeneCache geneCache = new GeneCache();
-
-    private Logger logDebug = Logger.getLogger("debug");
+    private TranscriptCache transcriptCache = new TranscriptCache();
+    private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
 
     public static void main(String[] args) throws Exception {
 
@@ -42,12 +43,12 @@ public class VariantPostProcessing extends VariantProcessingBase {
         VariantPostProcessing instance = (VariantPostProcessing) (bf.getBean("variantPostProcessing"));
 
         // process args
-        List<Integer> sampleIds = new ArrayList<>();
+        List<Integer> mapKeys = new ArrayList<>();
         String chr = null;
 
         for( int i=0; i<args.length; i++ ) {
-            if( args[i].equals("--sampleId") ) {
-                sampleIds.add(Integer.parseInt(args[++i]));
+            if( args[i].equals("--mapKey") ) {
+                mapKeys.add(Integer.parseInt(args[++i]));
             }
 
             if( args[i].equals("--fastaDir") ) {
@@ -67,9 +68,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
 
-        for( Integer sampleId: sampleIds ) {
+        for( Integer key: mapKeys ) {
             try {
-                instance.run(sampleId, chr);
+                instance.mapKey = key;
+                instance.run( chr);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -80,35 +82,27 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     }
 
-    void run(int sampleId, String chr) throws Exception {
-
-        VariantDAO vdao = new VariantDAO();
-        varTable = vdao.getVariantTable(sampleId);
-
-        SampleDAO sampleDAO = new SampleDAO();
-        sampleDAO.setDataSource(getDataSource());
-        Sample sample = sampleDAO.getSample(sampleId);
+    void run( String chr) throws Exception {
 
         String msg =
-            getVersion() + "\n" +
-            "processing sample " + sampleId + "\n" +
-            "   dbSnpSource: " + sample.getDbSnpSource() + "\n" +
-            "   mapKey: " + sample.getMapKey() + "\n";
+                getVersion() + "\n" +
+                        "processing assembly " + mapKey + "\n" +
+                        "   chromosome: " + chr + "\n";
         System.out.println(msg);
         logStatusMsg(msg);
 
         // open main log file
         String fileName = getLogDir()+getLogFile();
-        fileName = fileName.replace("###SAMPLE###", Integer.toString(sampleId));
+        fileName = fileName.replace("###ASSEMBLY###", Integer.toString(mapKey));
         setLogWriter(new BufferedWriter(new FileWriter(fileName)));
         getLogWriter().write(msg);
 
         // Log start
-        insertSystemLogMessage("variantPostProcessing", "Started for Sample " + sampleId);
+        insertSystemLogMessage("variantPostProcessing", "Started for Assembly " + mapKey);
 
         try {
-            prepareStatements(sampleId);
-            processChromosomes(sample, chr);
+            prepareStatements();
+            processChromosomes( chr);
             closePreparedStatements();
         }
         catch(Exception e) {
@@ -116,31 +110,31 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             getLogWriter().flush();
 
-            insertSystemLogMessage("variantPostProcessing", "Broken for Sample "+sampleId);
+            insertSystemLogMessage("variantPostProcessing", "Broken for Assembly "+mapKey);
 
             throw e;
         }
 
         // Log end
-        insertSystemLogMessage("variantPostProcessing", "Updated for Sample "+sampleId);
+        insertSystemLogMessage("variantPostProcessing", "Updated for Assembly "+mapKey);
 
-        msg = "sample "+sampleId+" processing complete!";
+        msg = "Assembly "+mapKey+" processing complete!";
         System.out.println(msg);
         logStatusMsg(msg);
-        getLogWriter().write("sample processing complete!\n");
+        getLogWriter().write("Assembly processing complete!\n");
         getLogWriter().close();
 
         System.out.println();
         getDataSource().getConnection().close();
     }
 
-    void processChromosomes(Sample sample, String chrOverride) throws Exception {
+    void processChromosomes( String chrOverride) throws Exception {
 
-        System.out.println("process chromosomes for sample "+sample.getId() );
+        System.out.println("process chromosomes for mapKey "+mapKey );
         //ChrFastaFile fastaFile = new ChrFastaFile();
         FastaParser fastaParser = new FastaParser();
-        fastaParser.setMapKey(sample.getMapKey(), this.getFastaDir());
-        List<String> chromosomes = getChromosomes(sample.getId());
+        fastaParser.setMapKey(mapKey, this.getFastaDir());
+        List<String> chromosomes = getChromosomes(mapKey);
         Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
         for( String chr: chromosomes ) {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
@@ -148,7 +142,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
             System.out.println("  chr "+chr);
 
-            processChromosome(chr, sample, fastaParser);
+            processChromosome(chr, fastaParser);
 
             getLogWriter().flush();
         }
@@ -160,7 +154,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     // for this chromosome and processing these variants
     //
     private VariantTranscriptBatch batch;
-    void processChromosome(String chr, Sample sample, FastaParser fastaFile) throws Exception {
+    void processChromosome(String chr, FastaParser fastaFile) throws Exception {
 
         long timestamp = System.currentTimeMillis();
         logStatusMsg("CHR " + chr);
@@ -168,22 +162,36 @@ public class VariantPostProcessing extends VariantProcessingBase {
         fastaFile.setChr(chr);
 
         long totalCount = 1;
-        batch = new VariantTranscriptBatch(sample.getId());
+        batch = new VariantTranscriptBatch();
         batch.setVerifyIfInRgd(verifyIfInRgd);
 
-        getLogWriter().write("------ PRELOAD VARIANT_TRANSCRIPT for chr"+chr+" --------\n");
-        int preloadedCount = batch.preloadVariantTranscriptData(sample.getId(), chr);
-        getLogWriter().write("------ PRELOADED: "+preloadedCount+"\n");
-        System.out.println("-- VT CACHE PRELOADED: "+preloadedCount);
-
+        int preloadedCount;
+        if(verifyIfInRgd) {
+            getLogWriter().write("------ PRELOAD VARIANT_TRANSCRIPT for chr"+chr+" --------\n");
+            preloadedCount = batch.preloadVariantTranscriptData(mapKey, chr);
+            getLogWriter().write("------ PRELOADED: " + preloadedCount + "\n");
+            System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
+        }
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" --------\n");
-        preloadedCount = geneCache.loadCache(sample.getMapKey(), chr, getDataSource());
+        preloadedCount = geneCache.loadCache(mapKey, chr, getDataSource());
         getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
         System.out.println("-- GENE CACHE PRELOADED: "+preloadedCount);
 
+        getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" --------\n");
+        preloadedCount = transcriptCache.loadCache(mapKey, chr, getDataSource());
+        logStatusMsg("------ INIT TRANSCRIPT CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        System.out.println("-- TRANSCRIPT CACHE PRELOADED: "+preloadedCount);
+
+        getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" --------\n");
+        preloadedCount = transcriptFeatureCache.loadCache(mapKey, chr, getDataSource());
+        logStatusMsg("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        System.out.println("-- TRANSCRIPT FEATURE CACHE PRELOADED: "+preloadedCount);
+
+
         // Iterate over all the variants for the given sample_id and chr
         //
-        ResultSet variantRow = getVariantResultSet(sample.getId(), chr);
+        ResultSet variantRow = getVariantResultSet(mapKey, chr);
+
         while( variantRow.next() ) {
             long variantId = variantRow.getLong(1);
             int varStart = variantRow.getInt(2);
@@ -200,105 +208,104 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 initGene(geneRgdId);
 
                 // Iterate over all transcripts for this gene
-                ResultSet rgdRow = getTranscriptsResultSet(geneRgdId, sample.getMapKey());
-                while( rgdRow.next() ) {
-                    int transcriptRgdId = rgdRow.getInt(1);
-                    getLogWriter().write("	------------- Start Processing of Transcript " + transcriptRgdId + " ---\n");
+               // ResultSet rgdRow = getTranscriptsResultSet(geneRgdId, sample.getMapKey());
+              //  while( rgdRow.next() ) {
+                List<TranscriptCache.TranscriptCacheEntry> entries = transcriptCache.getTranscripts(geneRgdId);
+                if(entries != null) {
+                    for (TranscriptCache.TranscriptCacheEntry entry : entries) {
+                        //    int transcriptRgdId = rgdRow.getInt(1);
+
+                        getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
 
 
-                    // Get count of exons as we need to ignore the last position of the last exon
-                    int totalExonCount = getExonCount(transcriptRgdId, chr, sample.getMapKey());
-                    getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
+                        // Get count of exons as we need to ignore the last position of the last exon
+                        int totalExonCount = getExonCount(entry.transcriptRgdId, chr, mapKey);
+                        getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
 
-                    TranscriptFlags tflags = new TranscriptFlags();
-
-
-                    // See if we have a Coding region
-                    String isNonCodingRegion = rgdRow.getString(2);
+                        TranscriptFlags tflags = new TranscriptFlags();
 
 
-                    processFeatures(transcriptRgdId, chr, sample.getMapKey(), tflags, varStart, varStop, totalExonCount);
+                        // See if we have a Coding region
+                        //   String isNonCodingRegion = rgdRow.getString(2);
 
-                    // not found means it was in an INTRON Region
-                    if (!tflags.inExon) {
-                        if (tflags.transcriptLocation != null) {
-                            tflags.transcriptLocation += ",INTRON";
-                        } else {
-                            tflags.transcriptLocation = "INTRON";
-                        }
-                    }
-                    getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
 
-                    // If not in Exome log and continue
-                    boolean doInsert = false;
-                    if (!tflags.inExon || isNonCodingRegion.equals("Y")) {
-                        if (isNonCodingRegion.equals("Y")) {
+                        processFeatures(entry.transcriptRgdId, chr, mapKey, tflags, varStart, varStop, totalExonCount);
+
+                        // not found means it was in an INTRON Region
+                        if (!tflags.inExon) {
                             if (tflags.transcriptLocation != null) {
-                                tflags.transcriptLocation += ",NON-CODING";
+                                tflags.transcriptLocation += ",INTRON";
                             } else {
-                                tflags.transcriptLocation = "NON-CODING";
+                                tflags.transcriptLocation = "INTRON";
                             }
                         }
-                        doInsert = true;
-                    }
-                    else {
-                        boolean wasInserted = processTranscript(tflags, transcriptRgdId, fastaFile,
-                                    varStart, varStop, variantId, refNuc, variantNuc, sample.getId());
-                        if( !wasInserted ) {
+                        getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
+
+                        // If not in Exome log and continue
+                        boolean doInsert = false;
+                        if (!tflags.inExon || entry.isNonCodingRegion.equals("Y")) {
+                            if (entry.isNonCodingRegion.equals("Y")) {
+                                if (tflags.transcriptLocation != null) {
+                                    tflags.transcriptLocation += ",NON-CODING";
+                                } else {
+                                    tflags.transcriptLocation = "NON-CODING";
+                                }
+                            }
                             doInsert = true;
+                        } else {
+                            boolean wasInserted = processTranscript(tflags, entry.transcriptRgdId, fastaFile,
+                                    varStart, varStop, variantId, refNuc, variantNuc, mapKey,chr);
+                            if (!wasInserted) {
+                                doInsert = true;
+                            }
+                        }
+
+                        if (doInsert) {
+                            insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
+                            // No need to determine Amino Acids if variant not in coding part of exon
                         }
                     }
-
-                    if( doInsert ) {
-                        insertVariantTranscript(variantId, transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
-                        // No need to determine Amino Acids if variant not in coding part of exon
-                    }
                 }
-                rgdRow.close();
+               // rgdRow.close();
             }
             totalCount += 1;
-
-            if( totalCount%10000 == 1 ) {
-                String m = totalCount + ". sample=" + sample.getId() + " chr" + chr + "  VT rows inserted=" + batch.getRowsCommitted()
-                        + ", up-to-date=" + batch.getRowsUpToDate()
-                        + ", updated=" + batch.getRowsUpdated()
-                        + ", elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
-                logDebug.debug(m);
-            }
         }
         variantRow.close();
 
         batch.flush();
 
-        String msg = "sample="+sample.getId()+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
+        String msg = "assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
                 +", up-to-date="+batch.getRowsUpToDate()
-                +", updated="+batch.getRowsUpdated()
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
         logStatusMsg(msg);
+        logStatusMsg("Total variants for assembly="+mapKey+" chr"+chr+" = "+totalCount);
     }
 
     void processFeatures(int transcriptRgdId, String chr, int mapKey, TranscriptFlags tflags, int varStart, int varStop, int totalExonCount) throws Exception {
 
         // Get all Transcript features for this transcript. These are Exoms, 3primeUTRs and 5PrimeUTRs
-        ResultSet transRow = getTranscriptFeaturesResultSet(transcriptRgdId, chr, mapKey);
-        while( transRow.next() ) {
+   //     ResultSet transRow = getTranscriptFeaturesResultSet(transcriptRgdId, chr, mapKey);
+   //     while( transRow.next() ) {
+        List<TranscriptFeatureCache.TranscriptFeatureCacheEntry> rows = transcriptFeatureCache.getTranscriptFeatures(transcriptRgdId);
+        if(rows != null) {
+            for (TranscriptFeatureCache.TranscriptFeatureCacheEntry transRow : rows) {
 
-            // Assume all rows have the same strand
-            tflags.strand = transRow.getString("STRAND");
-            int transStart = transRow.getInt("START_POS");
-            int transStop = transRow.getInt("STOP_POS");
-            String objectName = transRow.getString("OBJECT_NAME");
-            getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
+                // Assume all rows have the same strand
+                tflags.strand = transRow.strand;
+                int transStart = transRow.startPos;
+                int transStop = transRow.stopPos;
+                String objectName = transRow.objectName;
+                getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
 
-            if (objectName.equals("3UTRS") ) {
-                tflags.threeUtr = new Feature(transStart, transStop, objectName);
-            }
-            if (objectName.equals("5UTRS") ) {
-                tflags.fiveUtr = new Feature(transStart, transStop, objectName);
-            }
-            if (objectName.equals("EXONS") ) {
-                tflags.exomsArray.add(new Feature(transStart, transStop, objectName));
+                if (objectName.equals("3UTRS")) {
+                    tflags.threeUtr = new Feature(transStart, transStop, objectName);
+                }
+                if (objectName.equals("5UTRS")) {
+                    tflags.fiveUtr = new Feature(transStart, transStop, objectName);
+                }
+                if (objectName.equals("EXONS")) {
+                    tflags.exomsArray.add(new Feature(transStart, transStop, objectName));
 
                 // 1. Determine splice site is wihtin 10 BP of start / stop of any EXON
                 // 2. Check the start position unless it is the start of the first EXON
@@ -349,7 +356,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
             }
         }
-        transRow.close();
+        }
+      //  transRow.close();
     }
 
     // Process the variant exoms and UTRS  creating the variant_transcript.
@@ -357,7 +365,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     // if a variant falls into exon utr area, it is not processed, and false is returned
     // otherwise true is returned
     boolean processTranscript(TranscriptFlags tflags, int transcriptRgdId, FastaParser fastaFile,
-            int varStart, int varStop, long variantId, String refNuc, String varNuc, int sampleId) throws Exception {
+                              int varStart, int varStop, long variantId, String refNuc, String varNuc, int mapKey,String chr) throws Exception {
 
         if (tflags.strand != null && tflags.strand.equals("-") ) {
             getLogWriter().write("Switching UTrs as we're dealing with - strand ... \n");
@@ -411,12 +419,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
             varDna = new StringBuffer(varDna.toString().toLowerCase());
 
             // handle deletion
-            if( varNuc.contains("-") ) {
-                int deletionLength = varNuc.length();
+            if( varNuc == null || varNuc.contains("-")  ) {
+                int deletionLength;
+                if(varNuc == null)
+                    deletionLength = 1;
+                else deletionLength = varNuc.length();
                 varDna.replace(variantRelPos-1, variantRelPos-1+deletionLength, "");
             }
             // handle insertion
-            else if( refNuc.contains("-") ) {
+            else if(refNuc == null || refNuc.contains("-") ) {
                 varDna.insert(variantRelPos-1, varNuc);
             }
             // handle insertion
@@ -452,7 +463,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             // Check for rna evenly divisable by 3 or log as error
             String transcriptErrorFound = "F";
             if (refDna.length() % 3 != 0) {
-                writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+((new Date()).toString())+":TRIPLETERROR\n", sampleId);
+                writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+((new Date()).toString())+":TRIPLETERROR\n", mapKey);
                 getLogWriter().write("************************* Warning in transcript rna length : see error_rga.txt file  ************************\n");
                 // Use this later to update VARIANT+TRANSCRIPT table with error
                 transcriptErrorFound = "T";
@@ -469,7 +480,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             // Now test to see if the variant was in an area eliminated by the divisable by 3 truncation process
             if ( variantRelPos < 1 ) {
-                writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+new Date().toString()+":SKIPPED\n", sampleId);
+                writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+new Date().toString()+":SKIPPED\n", mapKey);
                 getLogWriter().write("************************* Error in transcript variant in trimmed area : skipping see error_rga.txt file  ************************\n");
                 return false; // return false to insert new row into VARIANT_TRANSCRIPT: at least variant location will be available
 
@@ -485,7 +496,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
 
             return handleTranslatedProtein(refDna, varDna, variantRelPos, variantId,
-                    transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound);
+                    transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound,chr);
         } else {
             //variant lies within an exon but the part of the exon where it lies is not protein coding
             // so the variant lies within an exon that is part of a UTR
@@ -496,7 +507,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     }
 
     boolean handleTranslatedProtein(StringBuffer refDna, StringBuffer varDna, int variantRelPos, long variantId,
-            int transcriptRgdId, String transcriptLocation, String nearSpliceSite, String transcriptErrorFound) throws Exception {
+            int transcriptRgdId, String transcriptLocation, String nearSpliceSite, String transcriptErrorFound,String chr) throws Exception {
 
         String rnaRefTranslated = translate(refDna);
         String rnaVarTranslated = translate(varDna);
@@ -528,7 +539,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             insertVariantTranscript(variantId, transcriptRgdId, LRef, LVar,
                     synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
-                    rnaRefTranslated, refDna.toString(), isFrameShift);
+                    rnaRefTranslated, refDna.toString(), isFrameShift,chr);
 
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         } else {
@@ -743,15 +754,20 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String transcriptLocation, String nearSpliceSite) throws Exception {
         insertVariantTranscript(variantId, transcriptRgdId, null, null, null, transcriptLocation, nearSpliceSite, null,
-                null, null, null, null, null);
+                null, null, null, null, null,null);
         getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
                 + ", " + transcriptRgdId + " \n");
+        //logStatusMsg("		Found variant for variantId " + variantId + ", transcriptId " + transcriptRgdId + " \n");
     }
 
     void insertVariantTranscript(long variantId, int transcriptRgdId, String refAA, String varAA, String synStatus,
-         String transcriptLocation, String nearSpliceSite, Integer fullRefAaPos, Integer fullRefNucPos,
-         String tripletError, String fullRefAA, String fullRefNuc, String frameShift) throws Exception {
+                                 String transcriptLocation, String nearSpliceSite, Integer fullRefAaPos, Integer fullRefNucPos,
+                                 String tripletError, String fullRefAA, String fullRefNuc, String frameShift,String chr) throws Exception {
 
+
+        int fullRefAASeqKey;
+        int fullRefNucSeqKey;
+        SequenceDAO sequenceDAO = new SequenceDAO();
         VariantTranscript vt = new VariantTranscript();
         vt.setVariantId(variantId);
         vt.setTranscriptRgdId(transcriptRgdId);
@@ -763,26 +779,87 @@ public class VariantPostProcessing extends VariantProcessingBase {
         vt.setFullRefAAPos(fullRefAaPos);
         vt.setFullRefNucPos(fullRefNucPos);
         vt.setTripletError(tripletError);
-        vt.setFullRefAA(fullRefAA);
-        vt.setFullRefNuc(fullRefNuc);
+        String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
+
+        if(fullRefAA != null) {
+            Sequence seq = new Sequence();
+            seq.setRgdId(transcriptRgdId);
+            seq.setSeqData(fullRefAA);
+            List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
+            if (!aaseqs.isEmpty()) {
+                String s = aaseqs.get(0).getSeqData();
+                if(s.equalsIgnoreCase(fullRefAA)) {
+                    fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                }
+                else{
+                    aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_"+assembly);
+                    if(aaseqs.isEmpty()) {
+                        aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly+"_"+chr);
+                        if(aaseqs.isEmpty()) {
+                            seq.setSeqType("full_ref_aa_" + assembly);
+                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                        }else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                    }else {
+                        s = aaseqs.get(0).getSeqData();
+                        if (s.equalsIgnoreCase(fullRefAA)) {
+                            fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                        }else {
+                            seq.setSeqType("full_ref_aa_" + assembly+"_"+chr);
+                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                        }
+                    }
+                }
+                vt.setFullRefAASeqKey(fullRefAASeqKey);
+            }else{
+                seq.setSeqType("full_ref_aa");
+                fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                vt.setFullRefAASeqKey(fullRefAASeqKey);
+            }
+
+        }
+        if(fullRefNuc != null) {
+            List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
+            Sequence seq = new Sequence();
+            seq.setSeqData(fullRefNuc);
+            seq.setRgdId(transcriptRgdId);
+            if (nucSeqs.isEmpty()) {
+                seq.setSeqType("full_ref_nuc");
+                fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
+                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
+            } else {
+                String s = nucSeqs.get(0).getSeqData();
+                if(s.equalsIgnoreCase(fullRefNuc)) {
+                    fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                }else {
+                    nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_nuc_"+assembly);
+                    if(nucSeqs.isEmpty()) {
+                        seq.setSeqType("full_ref_nuc_" + assembly);
+                        fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
+                    }else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                }
+                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
+            }
+
+        }
         vt.setFrameShift(frameShift);
+        vt.setMapKey(mapKey);
         batch.addToBatch(vt);
     }
 
-    void writeError(String msg, int sampleId) throws IOException {
-        File errorFile = new File(getLogDir()+"/error_rna_$"+sampleId+".txt");
+    void writeError(String msg, int mapKey) throws IOException {
+        File errorFile = new File(getLogDir()+"/error_rna_$"+mapKey+".txt");
         FileWriter efile = new FileWriter(errorFile, true);
         efile.write(msg);
         efile.close();
     }
 
-    List<String> getChromosomes(int sampleId) throws Exception {
+    List<String> getChromosomes(int mapKey) throws Exception {
 
-        String sql = "SELECT DISTINCT chromosome FROM "+varTable+" WHERE sample_id=? ";
-        StringListQuery q = new StringListQuery(getDataSource(), sql);
+        String sql = "SELECT DISTINCT chromosome FROM variant_map_data WHERE map_key=? ";
+        StringListQuery q = new StringListQuery(getVariantDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.compile();
-        return q.execute(new Object[]{sampleId});
+        return q.execute(new Object[]{mapKey});
     }
 
     PreparedStatement psVariant;
@@ -790,16 +867,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
     PreparedStatement psExonCount;
     PreparedStatement psTranscriptFeatures;
 
-    void prepareStatements(int sampleId) throws Exception {
+    void prepareStatements() throws Exception {
         System.out.println("preparing sql statements");
 
-        String sql = "SELECT variant_id,start_pos,end_pos,var_nuc,ref_nuc "+
-                "FROM "+varTable+
-                " WHERE sample_id=? AND chromosome = ?";
-        psVariant = getDataSource().getConnection().prepareStatement(sql);
+        String sql = "SELECT v.rgd_id,vm.start_pos,vm.end_pos,v.var_nuc,v.ref_nuc "+
+                "FROM variant v inner join variant_map_data vm on v.rgd_id = vm.rgd_id and vm.map_key = ? and vm.chromosome = ?";
+        psVariant = getVariantDataSource().getConnection().prepareStatement(sql);
 
 
-        sql = "SELECT transcript_rgd_id,is_non_coding_ind FROM transcripts WHERE gene_rgd_id=? "+
+  /*      sql = "SELECT transcript_rgd_id,is_non_coding_ind FROM transcripts WHERE gene_rgd_id=? "+
         "AND EXISTS(SELECT 1 FROM maps_data md WHERE md.rgd_id=transcript_rgd_id AND md.map_key=?)";
         psTranscript = getDataSource().getConnection().prepareStatement(sql);
 
@@ -836,40 +912,45 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 "AND r.OBJECT_KEY = ro.OBJECT_KEY order by OBJECT_NAME, START_POS, STOP_POS";
 
         psTranscriptFeatures = getDataSource().getConnection().prepareStatement(sql);
+        */
     }
 
     void closePreparedStatements() throws Exception {
         psVariant.close();
-        psTranscript.close();
+    /*    psTranscript.close();
         psExonCount.close();
         psTranscriptFeatures.close();
+    */
     }
 
-    ResultSet getVariantResultSet(int sampleId, String chr) throws Exception {
+    ResultSet getVariantResultSet(int mapKey, String chr) throws Exception {
 
-        psVariant.setInt(1, sampleId);
+        psVariant.setInt(1, mapKey);
         psVariant.setString(2, chr);
         return psVariant.executeQuery();
     }
 
     // Get all transcripts for gene
-    ResultSet getTranscriptsResultSet(int geneRgdId, int mapKey) throws Exception {
+/*    ResultSet getTranscriptsResultSet(int geneRgdId, int mapKey) throws Exception {
 
         psTranscript.setInt(1, geneRgdId);
         psTranscript.setInt(2, mapKey);
         return psTranscript.executeQuery();
     }
-
+*/
     int getExonCount(int transcriptRgdId, String chr, int mapKey) throws Exception {
 
-        psExonCount.setInt(1, transcriptRgdId);
+   /*     psExonCount.setInt(1, transcriptRgdId);
         psExonCount.setInt(2, mapKey);
         psExonCount.setString(3, chr);
         ResultSet rs = psExonCount.executeQuery();
         rs.next();
         int exonCount = rs.getInt(1);
         rs.close();
-        return exonCount;
+    */
+        if(transcriptCache.exonResult.containsKey(transcriptRgdId))
+           return transcriptCache.exonResult.get(transcriptRgdId);
+        else return 0;
     }
 
     // Get all Transcript features for this transcript. These are Exoms, 3primeUTRs and 5PrimeUTRs
@@ -1057,7 +1138,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     void updateVarAA(int sampleId, long varTrId, String oldVarAA, String newVarAA) throws Exception {
 
         String sql = "update variant_transcript "+
-            "set var_aa=? where var_aa=? and variant_transcript_id=? ";
+                "set var_aa=? where var_aa=? and variant_transcript_id=? ";
 
         /*
         Connection conn = this.getDataSource().getConnection();
@@ -1073,7 +1154,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         appendMessageToVarAaFixLog(sampleId, msg);
     }
 
-    void flipSynStatus(int sampleId, long varTrId, String oldSynStatus) throws Exception {
+    void flipSynStatus(int mapKey, long varTrId, String oldSynStatus) throws Exception {
 
         String newSynStatus = oldSynStatus.equals("synonymous") ? "nonsynonymous" :
                 oldSynStatus.equals("nonsynonymous") ? "synonymous" :
@@ -1091,8 +1172,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
         int updateCount = ps.getUpdateCount();
         conn.close();
   */
-        String msg = "variant_transcript_id="+varTrId+", old SYN_STATUS="+oldSynStatus+", new SYN_STATUS="+newSynStatus;
-        appendMessageToVarAaFixLog(sampleId, msg);
+        String msg = "variant_rgd_id="+varTrId+", old SYN_STATUS="+oldSynStatus+", new SYN_STATUS="+newSynStatus;
+        appendMessageToVarAaFixLog(mapKey, msg);
     }
 
     void appendMessageToVarAaFixLog(int sampleId, String msg) throws Exception {
