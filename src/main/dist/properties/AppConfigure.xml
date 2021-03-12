@@ -57,5 +57,5 @@
     <bean id="snpEffLoader" class="edu.mcw.rgd.ratcn.SnpEffLoader">
         <property name="version" value="SnpEffLoader -- ver. 1.0.0 -- Apr 18, 2017 --" />
     </bean>
-
-</beans>
+    <bean id="variantRatLoader" class="edu.mcw.rgd.ratcn.VariantRatLoaderFromDb"></bean>
+    </beans>
