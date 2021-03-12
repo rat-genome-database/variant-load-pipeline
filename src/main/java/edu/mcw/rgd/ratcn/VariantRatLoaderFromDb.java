@@ -297,7 +297,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             varTable = "variant_clinvar";
         }else if( sampleId>=6000 && sampleId<=6999 ) {
             varTable = "variant_dog";
-        } else varTable =  "variant";
+        } else varTable =  "variant_old";
 
         String sql = "SELECT * FROM "+varTable+" where sample_id = ? and chromosome=?";// and start_pos between 88564465 and 177128931"; //183739492
 
