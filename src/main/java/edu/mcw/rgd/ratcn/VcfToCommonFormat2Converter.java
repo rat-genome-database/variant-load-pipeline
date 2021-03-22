@@ -184,16 +184,20 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
             return;
 
         // get index of GQ - genotype quality
-        String[] format = v[8].split(":");
+        String[] format;
+        if(v[8].contains(";"))
+            format = v[8].split(";");
+        else format = v[8].split(":");
         int ADindex = readADindex(format);
         int DPindex = readDPindex(format);
+
         if( ADindex < 0 || DPindex<0 ) {
             if( !processLinesWithMissingADDP ) {
                 linesWithADorDPmissing++;
                 return;
             }
         }
-       
+
         // rgdid and hgvs name
         Integer rgdId = null;
         String hgvsName = null;
