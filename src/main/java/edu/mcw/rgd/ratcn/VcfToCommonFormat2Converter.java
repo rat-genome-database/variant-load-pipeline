@@ -183,7 +183,6 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         if(alleles.contains(","))
             return;
 
-
         // get index of GQ - genotype quality
         String[] format = v[8].split(":");
         int ADindex = readADindex(format);
@@ -194,14 +193,11 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
                 return;
             }
         }
-
+       
         // rgdid and hgvs name
         Integer rgdId = null;
         String hgvsName = null;
         String id = v[2];
-
-        if(id.contains(";"))
-            return;
 
 
         if( !Utils.isStringEmpty(id) && id.startsWith("RGDID:")) {
