@@ -187,12 +187,16 @@ public class VariantProcessingBase {
         }
     }
     public List<VariantMapData> getVariants(int speciesKey, int mapKey,String chr) throws Exception{
-        String sql = "SELECT * FROM variant v inner join variant_map_data vm on v.rgd_id = vm. rgd_id WHERE v.species_type_key = ? and vm.map_key = ? and vm.chromosome=?";
+        String sql = "SELECT * FROM variant v inner join variant_map_data vm on v.rgd_id = vm. rgd_id WHERE v.species_type_key = ? and vm.map_key = ?";
+        if(chr !=null && !chr.equals(""))
+             sql +=   " and vm.chromosome=?";
         VariantMapQuery q = new VariantMapQuery(getVariantDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         q.declareParameter(new SqlParameter(Types.INTEGER));
-        q.declareParameter(new SqlParameter(Types.VARCHAR));
-        return q.execute(speciesKey,mapKey,chr);
+        if(chr !=null && !chr.equals("")) {
+            q.declareParameter(new SqlParameter(Types.VARCHAR));
+            return q.execute(speciesKey, mapKey, chr);
+        }else return q.execute(speciesKey,mapKey);
     }
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
@@ -246,7 +250,7 @@ public class VariantProcessingBase {
         return totalRowsAffected;
     }
     public DataSource getVariantDataSource() throws Exception{
-        return DataSourceFactory.getInstance().getDataSource("Variant");
+        return DataSourceFactory.getInstance().getCarpeNovoDataSource();
     }
     public DataSource getDataSource() {
         return dataSource;
