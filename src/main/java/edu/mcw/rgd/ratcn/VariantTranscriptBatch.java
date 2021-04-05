@@ -78,7 +78,7 @@ public class VariantTranscriptBatch {
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             // KEY(variant_id,transcript_rgd_id)
-            int key = rs.getInt(1);
+            long key = rs.getLong(1);
             // VALUE(variant_transcript_id)
             int value = rs.getInt(2);
 
@@ -94,7 +94,7 @@ public class VariantTranscriptBatch {
 
         return vtData.size();
     }
-    private Map<Integer, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
+    private Map<Long, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
 
     /**
      *
