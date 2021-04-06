@@ -67,7 +67,7 @@ public class VariantTranscriptBatch {
     /// useful for ClinVar data
     public int preloadVariantTranscriptData(int mapKey, String chr) throws Exception {
         String sql = "SELECT variant_rgd_id,transcript_rgd_id FROM variant_transcript vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND vt.map_key=? AND v.chromosome=?) and vt.map_key=?";
+                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND v.map_key=? AND v.chromosome=?) and vt.map_key=?";
 
         vtData = new HashMap();
         Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
