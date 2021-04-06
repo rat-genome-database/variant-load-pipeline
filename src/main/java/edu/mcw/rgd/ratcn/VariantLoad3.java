@@ -58,6 +58,7 @@ public class VariantLoad3 extends VariantProcessingBase {
     private RGDManagementDAO managementDAO = new RGDManagementDAO();
     private String chr;
     private List<VariantMapData> loaded_cache = new ArrayList<>();
+    private boolean clinvar = false;
 
     public VariantLoad3() throws Exception {
         dao.setDataSource(getDataSource());
@@ -96,6 +97,9 @@ public class VariantLoad3 extends VariantProcessingBase {
                     break;
                 case "--chr":
                     instance.chr = args[++i];
+                    break;
+                case "--clinvar":
+                    instance.clinvar = true;
                     break;
             }
         }
@@ -201,7 +205,9 @@ public class VariantLoad3 extends VariantProcessingBase {
 
         // cleanup
         reader.close();
-saveVariants();
+        if(clinvar)
+            saveClinvarVariants();
+        else saveVariants();
         long rowsSkipped = rowsAlreadyInRgd - rowsAlreadyInRgd0;
         if( rowsSkipped>0 ) {
             System.out.println("    rows skipped (already in RGD) ="+rowsSkipped);
@@ -367,6 +373,7 @@ saveVariants();
      * save variant into database, table VARIANT
      */
     public void saveVariants() throws Exception {
+
         int speciesKey=SpeciesType.getSpeciesTypeKeyForMap(sample.getMapKey());
         HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
         if(loaded_cache.size()== 0)
@@ -401,7 +408,6 @@ saveVariants();
             if(loaded_cache.size() != 0 && loadedData.keySet().contains(mapData.getStartPos())){
                 List<VariantMapData> maps = loadedData.get(mapData.getStartPos());
                 for(VariantMapData v: maps){
-
                     if(v.getEndPos() == mapData.getEndPos()
                             && ((v.getReferenceNucleotide() == null && mapData.getReferenceNucleotide().isEmpty())
                             || ( v.getReferenceNucleotide() != null && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
@@ -412,26 +418,28 @@ saveVariants();
                         mapData.setId(id);
                     }
                 }
+            } else {
+                id = variant.getRgdId();
             }
+
+                VariantSampleDetail sampleDetail = new VariantSampleDetail();
+                sampleDetail.setSampleId(sample.getId());
+                sampleDetail.setZygosityStatus(variant.getZygosityStatus());
+                sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
+                sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
+                sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
+                sampleDetail.setVariantFrequency(variant.getVariantFrequency());
+                sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
+                sampleDetail.setDepth(variant.getDepth());
+                sampleDetail.setQualityScore(variant.getQualityScore());
+                sampleDetail.setId(mapData.getId());
+                sampleBatch.add(sampleDetail);
+
             if(id == 0 ) {
-                  RgdId r = managementDAO.createRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
-                    mapData.setId(r.getRgdId());
-                    varBatch.add(mapData);
+                RgdId r = managementDAO.createRgdId(RgdId.OBJECT_KEY_VARIANTS, "ACTIVE", "created by Variant pipeline", speciesKey);
+                mapData.setId(r.getRgdId());
+                varBatch.add(mapData);
             }
-            VariantSampleDetail sampleDetail = new VariantSampleDetail();
-            sampleDetail.setSampleId(sample.getId());
-            sampleDetail.setZygosityStatus(variant.getZygosityStatus());
-            sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
-            sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
-            sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
-            sampleDetail.setVariantFrequency(variant.getVariantFrequency());
-            sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
-            sampleDetail.setDepth(variant.getDepth());
-            sampleDetail.setQualityScore(variant.getQualityScore());
-            sampleDetail.setId(mapData.getId());
-            sampleBatch.add(sampleDetail);
-
-
         }
         insertVariants(varBatch);
         insertVariantMapData(varBatch);
@@ -442,7 +450,64 @@ saveVariants();
         variants.clear();
 
     }
+    public void saveClinvarVariants() throws Exception {
 
+        HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
+        if(loaded_cache.size()== 0)
+            loaded_cache = getVariants(SpeciesType.HUMAN,sample.getMapKey(),chr);
+        List<VariantMapData> mdata = new ArrayList<>();
+        // group variants by chr and start pos to make them searchable using keys
+        for(VariantMapData data: loaded_cache){
+            mdata = loadedData.get(data.getId());
+            if(mdata == null) {
+                mdata = new ArrayList<>();
+            }
+            mdata.add(data);
+            loadedData.put(data.getId(),mdata);
+        }
+        System.out.println("Loaded from Clinvar file: " + variants.size());
+        System.out.println("Loaded from Variant : " + loaded_cache.size());
+        for (Variant variant : variants) {
+            VariantMapData mapData = new VariantMapData();
+            mapData.setMapKey(sample.getMapKey());
+            mapData.setReferenceNucleotide(variant.getReferenceNucleotide());
+            mapData.setVariantNucleotide(variant.getVariantNucleotide());
+            mapData.setVariantType(variant.getVariantType());
+            mapData.setSpeciesTypeKey(SpeciesType.HUMAN);
+            mapData.setChromosome(variant.getChromosome());
+            mapData.setPaddingBase(variant.getPaddingBase());
+            mapData.setStartPos(variant.getStartPos());
+            mapData.setEndPos(variant.getEndPos());
+            mapData.setGenicStatus(variant.getGenicStatus());
+            mapData.setRsId(variant.getRsId());
+            long id = variant.getRgdId();
+
+            if(loaded_cache.size() != 0 && !loadedData.keySet().contains(id)) {
+                mapData.setId(id);
+                varBatch.add(mapData);
+                VariantSampleDetail sampleDetail = new VariantSampleDetail();
+                sampleDetail.setSampleId(sample.getId());
+                sampleDetail.setZygosityStatus(variant.getZygosityStatus());
+                sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
+                sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
+                sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
+                sampleDetail.setVariantFrequency(variant.getVariantFrequency());
+                sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
+                sampleDetail.setDepth(variant.getDepth());
+                sampleDetail.setQualityScore(variant.getQualityScore());
+                sampleDetail.setId(mapData.getId());
+                sampleBatch.add(sampleDetail);
+            }
+        }
+        insertVariants(varBatch);
+        insertVariantMapData(varBatch);
+        insertVariantSample(sampleBatch);
+        varBatch.clear();
+        sampleBatch.clear();
+        loadedData.clear();
+        variants.clear();
+
+    }
     List<VariantMapData> varBatch = new ArrayList<VariantMapData>();
     List<VariantSampleDetail> sampleBatch=new ArrayList<>();
 
