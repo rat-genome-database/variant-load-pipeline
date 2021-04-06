@@ -70,12 +70,14 @@ if [[ $STAGE3 -eq 1 ]]; then
     --tool VariantLoad3 \
     --sampleId 1 --inputFile "$WORKDIR/ClinVar17.txt.gz" \
     --verifyIfInRgd \
+    --clinvar \
     > "$WORKDIR/load37.log" &
 
   java $JAVA_INFO \
     --tool VariantLoad3 \
     --sampleId 2 --inputFile "$WORKDIR/ClinVar38.txt.gz" \
     --verifyIfInRgd \
+    --clinvar \
     > "$WORKDIR/load38.log" &
 
   wait
@@ -88,13 +90,13 @@ if [[ $STAGE4 -eq 1 ]]; then
   echo "STAGE4: run variant post processing on loaded samples"
   java $JAVA_INFO \
     --tool VariantPostProcessing \
-    --sampleId 1 --fastaDir "/data/ref/fasta/hs37" \
+    --mapKey 17 --fastaDir "/data/ref/fasta/hs37" \
     --verifyIfInRgd \
     > "$WORKDIR/vpp37.log" &
 
   java $JAVA_INFO \
     --tool VariantPostProcessing \
-    --sampleId 2 --fastaDir "/data/ref/fasta/hs38" \
+    --mapKey 38 --fastaDir "/data/ref/fasta/hs38" \
     --verifyIfInRgd \
     > "$WORKDIR/vpp38.log" &
   wait
