@@ -49,7 +49,7 @@ public class VariantTranscriptBatch {
 
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;
-    private boolean verifyIfInRgd = false;
+    private boolean verifyIfInRgd = true;
 
 
     public VariantTranscriptBatch() {
@@ -67,17 +67,18 @@ public class VariantTranscriptBatch {
     /// useful for ClinVar data
     public int preloadVariantTranscriptData(int mapKey, String chr) throws Exception {
         String sql = "SELECT variant_rgd_id,transcript_rgd_id FROM variant_transcript vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND vt.map_key=? AND v.chromosome=?)";
+                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND vt.map_key=? AND v.chromosome=?) and vt.map_key=?";
 
         vtData = new HashMap();
         Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1,mapKey);
         ps.setString(2, chr);
+        ps.setInt(3,mapKey);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             // KEY(variant_id,transcript_rgd_id)
-            int key = rs.getInt(1);
+            long key = rs.getLong(1);
             // VALUE(variant_transcript_id)
             int value = rs.getInt(2);
 
@@ -93,7 +94,7 @@ public class VariantTranscriptBatch {
 
         return vtData.size();
     }
-    private Map<Integer, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
+    private Map<Long, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
 
     /**
      *
