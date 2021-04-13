@@ -263,25 +263,41 @@ public class VariantProcessingBase {
     public void insertClinvarIds() throws Exception{
         GenomicElementDAO gedao = new GenomicElementDAO();
         List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(SpeciesType.HUMAN);
+        System.out.println(variants.size());
         HashMap<Integer,String> data = new HashMap<>();
         List<Integer> rgdIds = new ArrayList<>();
+        String sql = "update variant set clinvar_id = ? where rgd_id = ?";
+        BatchSqlUpdate su = new BatchSqlUpdate(getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
+        su.compile();
         for(edu.mcw.rgd.ratcn.Variant v:variants){
             rgdIds.add(Long.valueOf(v.getId()).intValue());
+            if(rgdIds.size() % 999 == 0) {
+                System.out.println(rgdIds.size());
+                List<GenomicElement> elementList = gedao.getElementsByRgdIds(rgdIds);
+                rgdIds.clear();
+                for(GenomicElement g:elementList) {
+                    if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
+                        su.update(g.getSymbol(),g.getRgdId());
+                    }
+                }
+                su.flush();
+            }
 
         }
-
+        System.out.println(rgdIds.size());
         List<GenomicElement> elementList = gedao.getElementsByRgdIds(rgdIds);
-        String sql = "update variant set clinvar_id = ? where rgd_id = ?";
-        BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
-        su.compile();
-
+        rgdIds.clear();
         for(GenomicElement g:elementList) {
             if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
                 su.update(g.getSymbol(),g.getRgdId());
             }
         }
-
         su.flush();
+
+
+
+
+
     }
     public DataSource getVariantDataSource() throws Exception{
         return DataSourceFactory.getInstance().getCarpeNovoDataSource();
