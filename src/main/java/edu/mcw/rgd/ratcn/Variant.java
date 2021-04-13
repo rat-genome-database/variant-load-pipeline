@@ -6,7 +6,7 @@ package edu.mcw.rgd.ratcn;
  */
 public class Variant {
 
-    int id;
+    long id;
     String referenceNucleotide = "";
     String variantNucleotide = "";
     String rsId;
@@ -14,11 +14,11 @@ public class Variant {
     String variantType;
     int speciesTypeKey;
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 

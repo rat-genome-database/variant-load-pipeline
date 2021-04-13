@@ -453,6 +453,7 @@ public class VariantLoad3 extends VariantProcessingBase {
     public void saveClinvarVariants() throws Exception {
 
         HashMap<Long,List<VariantMapData>> loadedData = new HashMap<>();
+        HashMap<Long, edu.mcw.rgd.ratcn.Variant> loadedVariants = new HashMap<>();
         if(loaded_cache.size()== 0)
             loaded_cache = getVariants(SpeciesType.HUMAN,sample.getMapKey(),chr);
         List<VariantMapData> mdata = new ArrayList<>();
@@ -464,6 +465,10 @@ public class VariantLoad3 extends VariantProcessingBase {
             }
             mdata.add(data);
             loadedData.put(data.getId(),mdata);
+        }
+        List<edu.mcw.rgd.ratcn.Variant> variantObjects = getVariantObjects(SpeciesType.HUMAN);
+        for(edu.mcw.rgd.ratcn.Variant data: variantObjects){
+            loadedVariants.put(data.getId(),data);
         }
         System.out.println("Loaded from Clinvar file: " + variants.size());
         System.out.println("Loaded from Variant : " + loaded_cache.size());
@@ -482,9 +487,12 @@ public class VariantLoad3 extends VariantProcessingBase {
             mapData.setRsId(variant.getRsId());
             long id = variant.getRgdId();
 
-            if(loaded_cache.size() != 0 && !loadedData.keySet().contains(id)) {
+            if(loaded_cache.size() != 0 && !loadedData.containsKey(id)) {
                 mapData.setId(id);
-                varBatch.add(mapData);
+                varMapBatch.add(mapData);
+                if(!loadedVariants.containsKey(id)){
+                    varBatch.add(mapData);
+                }
                 VariantSampleDetail sampleDetail = new VariantSampleDetail();
                 sampleDetail.setSampleId(sample.getId());
                 sampleDetail.setZygosityStatus(variant.getZygosityStatus());
@@ -500,15 +508,19 @@ public class VariantLoad3 extends VariantProcessingBase {
             }
         }
         insertVariants(varBatch);
-        insertVariantMapData(varBatch);
+        insertVariantMapData(varMapBatch);
         insertVariantSample(sampleBatch);
         varBatch.clear();
+        varMapBatch.clear();
         sampleBatch.clear();
         loadedData.clear();
         variants.clear();
 
+        insertClinvarIds();
+
     }
     List<VariantMapData> varBatch = new ArrayList<VariantMapData>();
+    List<VariantMapData> varMapBatch = new ArrayList<>();
     List<VariantSampleDetail> sampleBatch=new ArrayList<>();
 
 

@@ -75,7 +75,6 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             return;
         }
 
-
         for(String chr: chrs) {
             for(String sampleId: sampleIds) {
                 if(sampleId.equalsIgnoreCase("1") || sampleId.equalsIgnoreCase("2"))
@@ -190,7 +189,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         List<Variant> variants = getVariants(s.getId(),chr);
         List<edu.mcw.rgd.ratcn.Variant> variantList = getVariantObjects(SpeciesType.HUMAN);
         HashMap<Long,VariantMapData> data = new HashMap<>();
-        HashMap<Integer, edu.mcw.rgd.ratcn.Variant> varMap = new HashMap<>();
+        HashMap<Long, edu.mcw.rgd.ratcn.Variant> varMap = new HashMap<>();
         if(loaded.size()== 0) {
             loaded = getVariants(speciesKey, s.getMapKey(), chr);
             // group variants by rgd id to make them searchable using keys
@@ -270,25 +269,9 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
         sampleBatch.clear();
         loadedData.clear();
         variants.clear();
+        insertClinvarIds();
     }
-    public void insertClinvarIds(int speciesKey) throws Exception{
-        GenomicElementDAO gedao = new GenomicElementDAO();
-        List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(speciesKey);
-        HashMap<Integer,String> data = new HashMap<>();
-        for(edu.mcw.rgd.ratcn.Variant v:variants){
-            GenomicElement g = gedao.getElement(v.getId());
-            if(g.getSource().equalsIgnoreCase("CLINVAR")){
-                data.put(v.getId(),g.getSymbol());
-            }
-        }
-        String sql = "update variant set clinvar_id = ? where rgd_id = ?";
-        BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
-       su.compile();
-        for(int rgdId:data.keySet())
-            su.update(data.get(rgdId),rgdId);
 
-        su.flush();
-    }
 
     public List<Variant> getVariants(int sampleId, String chr) {
 
@@ -297,7 +280,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             varTable = "variant_clinvar";
         }else if( sampleId>=6000 && sampleId<=6999 ) {
             varTable = "variant_dog";
-        } else varTable =  "variant";
+        } else varTable =  "variant_old";
 
         String sql = "SELECT * FROM "+varTable+" where sample_id = ? and chromosome=?";// and start_pos between 88564465 and 177128931"; //183739492
 
