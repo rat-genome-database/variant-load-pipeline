@@ -71,7 +71,7 @@ if [[ $STAGE3 -eq 1 ]]; then
     --sampleId 1 --inputFile "$WORKDIR/ClinVar17.txt.gz" \
     --verifyIfInRgd \
     --clinvar \
-    > "$WORKDIR/load37.log" &
+    > "$WORKDIR/load37.log" 
 
   java $JAVA_INFO \
     --tool VariantLoad3 \
