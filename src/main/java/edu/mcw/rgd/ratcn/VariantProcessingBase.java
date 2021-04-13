@@ -263,17 +263,17 @@ public class VariantProcessingBase {
     public void insertClinvarIds() throws Exception{
         GenomicElementDAO gedao = new GenomicElementDAO();
         List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(SpeciesType.HUMAN);
-        HashMap<Integer,String> data = new HashMap<>();
+        HashMap<Long,String> data = new HashMap<>();
         for(edu.mcw.rgd.ratcn.Variant v:variants){
             GenomicElement g = gedao.getElement(Long.valueOf(v.getId()).intValue());
             if(g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")){
-                data.put(Long.valueOf(v.getId()).intValue(),g.getSymbol());
+                data.put(v.getId(),g.getSymbol());
             }
         }
         String sql = "update variant set clinvar_id = ? where rgd_id = ?";
         BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
         su.compile();
-        for(int rgdId:data.keySet())
+        for(long rgdId:data.keySet())
             su.update(data.get(rgdId),rgdId);
 
         su.flush();
