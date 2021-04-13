@@ -266,7 +266,7 @@ public class VariantProcessingBase {
         HashMap<Integer,String> data = new HashMap<>();
         for(edu.mcw.rgd.ratcn.Variant v:variants){
             GenomicElement g = gedao.getElement(Long.valueOf(v.getId()).intValue());
-            if(g.getSource().equalsIgnoreCase("CLINVAR")){
+            if(g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")){
                 data.put(Long.valueOf(v.getId()).intValue(),g.getSymbol());
             }
         }
