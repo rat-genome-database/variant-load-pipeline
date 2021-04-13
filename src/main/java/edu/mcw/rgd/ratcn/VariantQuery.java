@@ -19,7 +19,7 @@ public class VariantQuery extends MappingSqlQuery {
     protected Object mapRow(ResultSet rs, int rowNum) throws SQLException {
 
         Variant obj = new Variant();
-        obj.setId(rs.getInt("rgd_id"));
+        obj.setId(rs.getLong("rgd_id"));
         obj.setRsId(rs.getString("rs_id"));
         obj.setReferenceNucleotide(rs.getString("ref_nuc"));
         obj.setVariantNucleotide(rs.getString("var_nuc"));

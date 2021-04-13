@@ -1,7 +1,10 @@
 package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
+import edu.mcw.rgd.dao.impl.GenomicElementDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
+import edu.mcw.rgd.datamodel.GenomicElement;
+import edu.mcw.rgd.datamodel.SpeciesType;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
 import org.springframework.jdbc.object.SqlUpdate;
@@ -12,6 +15,7 @@ import java.io.File;
 import java.sql.DatabaseMetaData;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -198,6 +202,12 @@ public class VariantProcessingBase {
             return q.execute(speciesKey, mapKey, chr);
         }else return q.execute(speciesKey,mapKey);
     }
+    public List<Variant> getVariantObjects(int speciesKey) throws Exception{
+        String sql = "SELECT * FROM variant WHERE species_type_key = ?";
+        VariantQuery q = new VariantQuery(getVariantDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(speciesKey);
+    }
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (\n" +
@@ -248,6 +258,46 @@ public class VariantProcessingBase {
             totalRowsAffected += rowsAffected;
         }
         return totalRowsAffected;
+    }
+
+    public void insertClinvarIds() throws Exception{
+        GenomicElementDAO gedao = new GenomicElementDAO();
+        List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(SpeciesType.HUMAN);
+        System.out.println(variants.size());
+        HashMap<Integer,String> data = new HashMap<>();
+        List<Integer> rgdIds = new ArrayList<>();
+        String sql = "update variant set clinvar_id = ? where rgd_id = ?";
+        BatchSqlUpdate su = new BatchSqlUpdate(getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
+        su.compile();
+        for(edu.mcw.rgd.ratcn.Variant v:variants){
+            rgdIds.add(Long.valueOf(v.getId()).intValue());
+            if(rgdIds.size() % 999 == 0) {
+                System.out.println(rgdIds.size());
+                List<GenomicElement> elementList = gedao.getElementsByRgdIds(rgdIds);
+                rgdIds.clear();
+                for(GenomicElement g:elementList) {
+                    if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
+                        su.update(g.getSymbol(),g.getRgdId());
+                    }
+                }
+                su.flush();
+            }
+
+        }
+        System.out.println(rgdIds.size());
+        List<GenomicElement> elementList = gedao.getElementsByRgdIds(rgdIds);
+        rgdIds.clear();
+        for(GenomicElement g:elementList) {
+            if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
+                su.update(g.getSymbol(),g.getRgdId());
+            }
+        }
+        su.flush();
+
+
+
+
+
     }
     public DataSource getVariantDataSource() throws Exception{
         return DataSourceFactory.getInstance().getCarpeNovoDataSource();
