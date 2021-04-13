@@ -263,18 +263,23 @@ public class VariantProcessingBase {
     public void insertClinvarIds() throws Exception{
         GenomicElementDAO gedao = new GenomicElementDAO();
         List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(SpeciesType.HUMAN);
-        HashMap<Long,String> data = new HashMap<>();
+        HashMap<Integer,String> data = new HashMap<>();
+        List<Integer> rgdIds = new ArrayList<>();
         for(edu.mcw.rgd.ratcn.Variant v:variants){
-            GenomicElement g = gedao.getElement(Long.valueOf(v.getId()).intValue());
-            if(g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")){
-                data.put(v.getId(),g.getSymbol());
-            }
+            rgdIds.add(Long.valueOf(v.getId()).intValue());
+
         }
+
+        List<GenomicElement> elementList = gedao.getElementsByRgdIds(rgdIds);
         String sql = "update variant set clinvar_id = ? where rgd_id = ?";
         BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), sql,new int[]{Types.VARCHAR,Types.INTEGER}, 10000);
         su.compile();
-        for(long rgdId:data.keySet())
-            su.update(data.get(rgdId),rgdId);
+
+        for(GenomicElement g:elementList) {
+            if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
+                su.update(g.getSymbol(),g.getRgdId());
+            }
+        }
 
         su.flush();
     }
