@@ -265,9 +265,9 @@ public class VariantProcessingBase {
         List<edu.mcw.rgd.ratcn.Variant> variants = getVariantObjects(SpeciesType.HUMAN);
         HashMap<Integer,String> data = new HashMap<>();
         for(edu.mcw.rgd.ratcn.Variant v:variants){
-            GenomicElement g = gedao.getElement(Math.toIntExact(v.getId()));
+            GenomicElement g = gedao.getElement(Long.valueOf(v.getId()).intValue());
             if(g.getSource().equalsIgnoreCase("CLINVAR")){
-                data.put(Math.toIntExact(v.getId()),g.getSymbol());
+                data.put(Long.valueOf(v.getId()).intValue(),g.getSymbol());
             }
         }
         String sql = "update variant set clinvar_id = ? where rgd_id = ?";
