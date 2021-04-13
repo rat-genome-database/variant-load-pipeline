@@ -482,38 +482,8 @@ public class VariantLoad3 extends VariantProcessingBase {
             mapData.setStartPos(variant.getStartPos());
             mapData.setEndPos(variant.getEndPos());
             mapData.setGenicStatus(variant.getGenicStatus());
-            long id = 0;
-            if(loaded_cache.size() != 0 && data.keySet().contains(variant.getRgdId())){
-                VariantMapData v = data.get(variant.getRgdId());
-                if(v.getEndPos() == mapData.getEndPos()
-                        && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                        || ( v.getReferenceNucleotide() != null && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
-                        && v.getVariantType().equalsIgnoreCase(mapData.getVariantType())
-                        && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                        || (v.getVariantNucleotide() != null && v.getVariantNucleotide().equalsIgnoreCase(mapData.getVariantNucleotide()))) ) {
-                    id = v.getId();
-                    mapData.setId(id);
-                }
-            }
-            if(id == 0 ) {
-                mapData.setId(variant.getRgdId());
-                if(varMap.keySet().contains(variant.getRgdId())) {
-                    edu.mcw.rgd.ratcn.Variant v = varMap.get(variant.getRgdId());
-                    if(((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                            || ( v.getReferenceNucleotide() != null && v.getReferenceNucleotide().equalsIgnoreCase(mapData.getReferenceNucleotide())))
-                            && v.getVariantType().equalsIgnoreCase(mapData.getVariantType())
-                            && ((v.getVariantNucleotide() == null && mapData.getVariantNucleotide() == null )
-                            || (v.getVariantNucleotide() != null && v.getVariantNucleotide().equalsIgnoreCase(mapData.getVariantNucleotide()))) )
-                        varMapBatch.add(mapData);
-                    else {
-                        varBatch.add(mapData);
-                        varMapBatch.add(mapData);
-                    }
-                }else {
-                    varBatch.add(mapData);
-                    varMapBatch.add(mapData);
-                }
-            }
+            long id = variant.getRgdId();
+            mapData.setId(id);
             VariantSampleDetail sampleDetail = new VariantSampleDetail();
             sampleDetail.setSampleId(sample.getId());
             sampleDetail.setZygosityStatus(variant.getZygosityStatus());
@@ -526,7 +496,22 @@ public class VariantLoad3 extends VariantProcessingBase {
             sampleDetail.setDepth(variant.getDepth());
             sampleDetail.setQualityScore(variant.getQualityScore());
             sampleDetail.setId(mapData.getId());
-            sampleBatch.add(sampleDetail);
+
+
+            if(varMap.containsKey(id)) {
+                if(data.containsKey(id))
+                    System.out.println("Exists");
+                else {
+                    varMapBatch.add(mapData);
+                    sampleBatch.add(sampleDetail);
+                }
+            }else {
+                varBatch.add(mapData);
+                varMapBatch.add(mapData);
+                sampleBatch.add(sampleDetail);
+            }
+
+
         }
         insertVariants(varBatch);
         insertVariantMapData(varMapBatch);
