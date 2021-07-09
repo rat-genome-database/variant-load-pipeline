@@ -2,6 +2,8 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.GenomicElementDAO;
+import edu.mcw.rgd.dao.impl.SampleDAO;
+import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.GenomicElement;
 import edu.mcw.rgd.datamodel.SpeciesType;
@@ -202,12 +204,22 @@ public class VariantProcessingBase {
             return q.execute(speciesKey, mapKey, chr);
         }else return q.execute(speciesKey,mapKey);
     }
+
+    public List<VariantMapData> getVariants(int mapKey, int startPos) throws Exception{
+        String sql = "SELECT * FROM variant v inner join variant_map_data vm on v.rgd_id = vm. rgd_id  WHERE vm.map_key=? AND vm.start_pos=?";
+        VariantMapQuery q = new VariantMapQuery(getVariantDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(mapKey, startPos);
+    }
+
     public List<Variant> getVariantObjects(int speciesKey) throws Exception{
         String sql = "SELECT * FROM variant WHERE species_type_key = ?";
         VariantQuery q = new VariantQuery(getVariantDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         return q.execute(speciesKey);
     }
+
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (\n" +
@@ -258,6 +270,56 @@ public class VariantProcessingBase {
             totalRowsAffected += rowsAffected;
         }
         return totalRowsAffected;
+    }
+
+
+    public void insertVariant(VariantMapData v)  throws Exception{
+        SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
+                "INSERT INTO variant (" +
+                        " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY) " +
+                        "VALUES (?,?,?,?,?,?,?)",
+                new int[]{Types.INTEGER,Types.VARCHAR,Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,Types.INTEGER});
+        sql1.compile();
+        sql1.update(v.getId(), v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
+    }
+
+    public void insertVariantMapData(VariantMapData v)  throws Exception{
+        SqlUpdate sql2 = new SqlUpdate(this.getVariantDataSource(),
+                "INSERT INTO variant_map_data (" +
+                        " RGD_ID,CHROMOSOME,START_POS,END_POS,PADDING_BASE,GENIC_STATUS,MAP_KEY) " +
+                        "VALUES (?,?,?,?,?,?,?)",
+                new int[]{Types.INTEGER,Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR,Types.VARCHAR, Types.INTEGER});
+        sql2.compile();
+        sql2.update(v.getId(), v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
+    }
+
+    public void insertVariantSample(VariantSampleDetail v) throws Exception {
+        SqlUpdate bsu= new SqlUpdate(this.getVariantDataSource(),
+                "INSERT INTO variant_sample_detail (" +
+                        " RGD_ID,SOURCE,SAMPLE_ID,TOTAL_DEPTH,VAR_FREQ,ZYGOSITY_STATUS,ZYGOSITY_PERCENT_READ," +
+                        "ZYGOSITY_POSS_ERROR,ZYGOSITY_REF_ALLELE,ZYGOSITY_NUM_ALLELE,ZYGOSITY_IN_PSEUDO,QUALITY_SCORE)\n" +
+                        "VALUES (?,?,?,?,?,?,?," +
+                        "?,?,?,?,?)",
+                new int[]{Types.INTEGER,Types.VARCHAR,Types.INTEGER, Types.INTEGER, Types.INTEGER,Types.VARCHAR, Types.INTEGER,
+                        Types.VARCHAR,Types.VARCHAR, Types.INTEGER,Types.VARCHAR, Types.INTEGER});
+        bsu.compile();
+        bsu.update(v.getId(), v.getSource(), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),v.getZygosityStatus(),v.getZygosityPercentRead(),
+                   v.getZygosityPossibleError(),v.getZygosityRefAllele(),v.getZygosityNumberAllele(),v.getZygosityInPseudo(),v.getQualityScore());
+    }
+
+    public List<VariantSampleDetail> getVariantSampleDetail(int rgdId, int sampleId) throws Exception{
+        String sql = "SELECT * FROM variant_sample_detail  WHERE rgd_id=? AND sample_id=?";
+        VariantSampleQuery q = new VariantSampleQuery(getVariantDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(rgdId, sampleId);
+    }
+
+    public List<Integer> getRgdIdsWithSampleDetail(int sampleId) throws Exception{
+        String sql = "SELECT rgd_id FROM variant_sample_detail  WHERE sample_id=?";
+        IntListQuery q = new IntListQuery(getVariantDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(sampleId);
     }
 
     public void insertClinvarIds() throws Exception{

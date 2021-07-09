@@ -14,7 +14,7 @@
 	</bean>
 
     <bean id="variantLoad3" class="edu.mcw.rgd.ratcn.VariantLoad3">
-        <property name="version" value="--RGD VariantLoading-- ver. 3.0.4 -- Apr 13, 2017 --" />
+        <property name="version" value="--RGD VariantLoading-- ver. Jul 09, 2021--" />
 
         <!-- '_${SAMPLE_ID}.log' will be appended to the value of this property
              to construct a valid log file name -->

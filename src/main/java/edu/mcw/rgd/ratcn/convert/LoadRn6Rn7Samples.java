@@ -1,9 +1,8 @@
 package edu.mcw.rgd.ratcn.convert;
 
-import edu.mcw.rgd.dao.AbstractDAO;
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.SampleDAO;
-import edu.mcw.rgd.process.mapping.MapManager;
+import edu.mcw.rgd.ratcn.VariantLoad3;
 import edu.mcw.rgd.ratcn.VcfToCommonFormat2Converter;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
@@ -15,6 +14,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class LoadRn6Rn7Samples {
@@ -25,9 +26,103 @@ public class LoadRn6Rn7Samples {
             //int mapKey=372; // rn7
             // createSamples(mapKey);
             // convertToCommonFormat(mapKey);
-        //    loadVariants(mapKey);
+            loadVariants2(mapKey);
         } catch(Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    static void loadVariants2(int mapKey) throws Exception {
+        SampleDAO sdao = new SampleDAO();
+        sdao.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
+        Connection conn = sdao.getDataSource().getConnection();
+
+        String sampleNameSuffix;
+        String suffix = ".txt.gz";
+        File dir;
+        if (mapKey==360) {
+            sampleNameSuffix = "_rn6";
+            dir = new File("/data/rn6");
+        } else if( mapKey==372 ){
+            sampleNameSuffix = "_rnBN7";
+            dir = new File("/data/rnBN7");
+        } else {
+            throw new Exception("unexpected map_key="+mapKey);
+        }
+
+        String[] chromosomes = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "X", "Y", "MT"};
+        List<String> chrList = new ArrayList<>(Arrays.asList(chromosomes));
+
+        File[] files = dir.listFiles();
+        List<File> fileList = new ArrayList<>(Arrays.asList(files));
+        Collections.shuffle(fileList);
+        for (File f : fileList) {
+            String fname = f.getName();
+            if (f.isFile() && fname.endsWith(suffix)) {
+                String sampleName = fname.substring(0, fname.length() - suffix.length());
+                int sampleId = getSampleId(sampleName, conn, sampleNameSuffix);
+                System.out.println(sampleId+" "+sampleName);
+
+                // randmize chromosomes
+                Collections.shuffle(chrList);
+
+                for( String chr: chrList ) {
+                    List<String> argList = new ArrayList<>();
+                    argList.add("--inputFile");
+                    argList.add(f.getAbsolutePath());
+                    argList.add("--sampleId");
+                    argList.add(sampleId + "");
+                    argList.add("--logFileName");
+                    argList.add("logs/" + sampleId + "_varload.log");
+                    argList.add("--chr");
+                    argList.add(chr);
+                    argList.add("--verifyIfInRgd");
+
+                    String[] args = argList.toArray(new String[0]);
+                    VariantLoad3.main(args);
+                }
+            }
+        }
+    }
+
+    static void loadVariants(int mapKey) throws Exception {
+        SampleDAO sdao = new SampleDAO();
+        sdao.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
+        Connection conn = sdao.getDataSource().getConnection();
+
+        String sampleNameSuffix;
+        String suffix = ".txt.gz";
+        File dir;
+        if (mapKey==360) {
+            sampleNameSuffix = "_rn6";
+            dir = new File("/data/rn6");
+        } else if( mapKey==372 ){
+            sampleNameSuffix = "_rnBN7";
+            dir = new File("/data/rnBN7");
+        } else {
+            throw new Exception("unexpected map_key="+mapKey);
+        }
+
+        File[] files = dir.listFiles();
+        for (File f : files) {
+            String fname = f.getName();
+            if (f.isFile() && fname.endsWith(suffix)) {
+                String sampleName = fname.substring(0, fname.length() - suffix.length());
+                int sampleId = getSampleId(sampleName, conn, sampleNameSuffix);
+                System.out.println(sampleId+" "+sampleName);
+
+                List<String> argList = new ArrayList<>();
+                argList.add("--inputFile");
+                argList.add(f.getAbsolutePath());
+                argList.add("--sampleId");
+                argList.add(sampleId+"");
+                argList.add("--logFileName");
+                argList.add("logs/"+sampleId+"_varload.log");
+                argList.add("--verifyIfInRgd");
+
+                String[] args = argList.toArray(new String[0]);
+                VariantLoad3.main(args);
+            }
         }
     }
 
@@ -59,7 +154,7 @@ public class LoadRn6Rn7Samples {
             String fname = f.getName();
             if (f.isFile() && fname.endsWith(suffix)) {
                 String sampleName = fname.substring(0, fname.length() - suffix.length());
-                int sampleId = getSampleId(sampleName, conn);
+                int sampleId = getSampleId(sampleName, conn, "");
                 System.out.println(sampleId+" "+sampleName);
 
                 List<String> argList = new ArrayList<>();
@@ -80,10 +175,10 @@ public class LoadRn6Rn7Samples {
         }
     }
 
-    static int getSampleId(String analysisName, Connection conn) throws SQLException {
+    static int getSampleId(String analysisName, Connection conn, String sampleNameSuffix) throws SQLException {
         String sql = "SELECT sample_id FROM sample WHERE analysis_name=?";
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(1, analysisName);
+        ps.setString(1, analysisName+sampleNameSuffix);
         ResultSet rs = ps.executeQuery();
         int sampleId = 0;
         while( rs.next() ) {

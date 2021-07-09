@@ -1,4 +1,7 @@
-﻿Jul 7, 2021
+﻿Jul 9, 2021
+  VariantLoader3: updated for efficient loading on chromosome basis from common format files
+
+Jul 7, 2021
   patched VcfToCommonFormatConverter
 
 May 7, 2019
