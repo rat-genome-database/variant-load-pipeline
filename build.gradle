@@ -23,8 +23,8 @@ dependencies {
     compile 'commons-dbcp:commons-dbcp:1.4'
     compile 'commons-net:commons-net:3.6'
     compile 'log4j:log4j:1.2.17'
-    compile 'org.springframework:spring-beans:5.1.6.RELEASE'
-    compile 'org.springframework:spring-jdbc:5.1.6.RELEASE'
+    compile 'org.springframework:spring-beans:5.1.7.RELEASE'
+    compile 'org.springframework:spring-jdbc:5.1.7.RELEASE'
     compile 'com.oracle.ojdbc:ojdbc8:19.3.0.0'
     compile fileTree(dir: 'lib', include: '*.jar')
 }

@@ -1,10 +1,7 @@
 package edu.mcw.rgd.ratcn;
 
-import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
-import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
-import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
@@ -69,12 +66,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
 
         for( Integer key: mapKeys ) {
-            try {
-                instance.mapKey = key;
-                instance.run( chr);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            instance.mapKey = key;
+            instance.run( chr);
         }
     }
 

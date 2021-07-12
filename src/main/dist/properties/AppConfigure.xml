@@ -2,8 +2,8 @@
 <beans>
 
 	<bean id="variantPostProcessing" class="edu.mcw.rgd.ratcn.VariantPostProcessing">
-        <property name="version" value="--RGD VariantPostProcessing-- ver. 1.1.4 -- Oct 1, 2018 --" />
-        <property name="logFile" value="varpp_###SAMPLE###.log" />
+        <property name="version" value="--RGD VariantPostProcessing-- ver. Jul 12, 2021 --" />
+        <property name="logFile" value="varpp_###ASSEMBLY###.log" />
         <!--
         <property name="fastaDir" value="/data/RatCarpeNovoData/fasta/rat34" />
         <property name="fastaDir" value="/data/RatCarpeNovoData/fasta/rat5" />

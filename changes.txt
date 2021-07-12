@@ -1,4 +1,7 @@
-﻿Jul 9, 2021
+﻿Jul 12, 2021
+  VariantLoader3: updated for efficient loading on chromosome basis from common format files
+
+Jul 9, 2021
   VariantLoader3: updated for efficient loading on chromosome basis from common format files
 
 Jul 7, 2021

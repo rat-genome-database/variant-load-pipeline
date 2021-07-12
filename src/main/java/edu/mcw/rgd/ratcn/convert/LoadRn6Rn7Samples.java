@@ -3,6 +3,7 @@ package edu.mcw.rgd.ratcn.convert;
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.ratcn.VariantLoad3;
+import edu.mcw.rgd.ratcn.VariantPostProcessing;
 import edu.mcw.rgd.ratcn.VcfToCommonFormat2Converter;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
@@ -24,11 +25,32 @@ public class LoadRn6Rn7Samples {
         try {
             int mapKey = 360; // rn6
             //int mapKey=372; // rn7
-            // createSamples(mapKey);
+             //createSamples(mapKey);
             // convertToCommonFormat(mapKey);
-            loadVariants2(mapKey);
+            //loadVariants2(mapKey);
+            vpp(mapKey);
         } catch(Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    static void vpp(int mapKey) throws Exception {
+        String[] chromosomes = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "X", "Y", "MT"};
+        List<String> chrList = new ArrayList<>(Arrays.asList(chromosomes));
+        Collections.shuffle(chrList);
+
+        for( String chr: chrList ) {
+            List<String> argList = new ArrayList<>();
+            argList.add("--mapKey");
+            argList.add(mapKey + "");
+            argList.add("--fastaDir");
+            argList.add("/data/ref/fasta/rn6");
+            argList.add("--chr");
+            argList.add(chr);
+            argList.add("--verifyIfInRgd");
+
+            String[] args = argList.toArray(new String[0]);
+            VariantPostProcessing.main(args);
         }
     }
 
