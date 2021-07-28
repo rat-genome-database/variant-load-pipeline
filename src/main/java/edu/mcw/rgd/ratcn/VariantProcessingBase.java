@@ -272,6 +272,25 @@ public class VariantProcessingBase {
         return totalRowsAffected;
     }
 
+    public int updateVariantSample(List<VariantSampleDetail> sampleData) throws Exception {
+        BatchSqlUpdate bsu= new BatchSqlUpdate(this.getVariantDataSource(),
+                "UPDATE variant_sample_detail " +
+                        "SET ZYGOSITY_POSS_ERROR=? "+
+                        "WHERE RGD_ID=? AND sample_id=?",
+                new int[]{Types.VARCHAR,Types.INTEGER, Types.INTEGER}, 10000);
+        bsu.compile();
+        for(VariantSampleDetail v: sampleData ) {
+            bsu.update(v.getZygosityPossibleError(),v.getId(), v.getSampleId());
+        }
+        bsu.flush();
+        // compute nr of rows affected
+        int totalRowsAffected = 0;
+        for( int rowsAffected: bsu.getRowsAffected() ) {
+            totalRowsAffected += rowsAffected;
+        }
+        return totalRowsAffected;
+    }
+
 
     public void insertVariant(VariantMapData v)  throws Exception{
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),

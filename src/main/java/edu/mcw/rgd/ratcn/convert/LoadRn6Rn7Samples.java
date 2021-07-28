@@ -23,12 +23,12 @@ public class LoadRn6Rn7Samples {
 
     public static void main(String[] args) throws Exception {
         try {
-            int mapKey = 360; // rn6
-            //int mapKey=372; // rn7
+            //int mapKey = 360; // rn6
+            int mapKey=372; // rn7
              //createSamples(mapKey);
             // convertToCommonFormat(mapKey);
-            //loadVariants2(mapKey);
-            vpp(mapKey);
+            loadVariants2(mapKey);
+            //vpp(mapKey);
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -198,7 +198,8 @@ public class LoadRn6Rn7Samples {
     }
 
     static int getSampleId(String analysisName, Connection conn, String sampleNameSuffix) throws SQLException {
-        String sql = "SELECT sample_id FROM sample WHERE analysis_name=?";
+        //String sql = "SELECT sample_id FROM sample WHERE analysis_name=?";
+        String sql = "SELECT sample_id FROM sample WHERE remote_data_load_dir=?";
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setString(1, analysisName+sampleNameSuffix);
         ResultSet rs = ps.executeQuery();

@@ -495,6 +495,8 @@ public class VariantLoad3 extends VariantProcessingBase {
 
         Set<Integer> rgdIdsWithSampleDetail = new HashSet<>(getRgdIdsWithSampleDetail(sample.getId()));
 
+        List<VariantSampleDetail> sampleDetailForUpdate = new ArrayList<>();
+
         System.out.println("Loaded from Variant file: " + variants.size());
         System.out.println("Already in RGD : " + loadedData.size());
         for (Variant variant : variants) {
@@ -536,6 +538,7 @@ public class VariantLoad3 extends VariantProcessingBase {
             sampleDetail.setZygosityStatus(variant.getZygosityStatus());
             sampleDetail.setZygosityPercentRead(variant.getZygosityPercentRead());
             sampleDetail.setZygosityRefAllele(variant.getZygosityRefAllele());
+            sampleDetail.setZygosityPossibleError(variant.getZygosityPossibleError());
             sampleDetail.setZygosityNumberAllele(variant.getZygosityNumberAllele());
             sampleDetail.setVariantFrequency(variant.getVariantFrequency());
             sampleDetail.setZygosityInPseudo(variant.getZygosityInPseudo());
@@ -558,6 +561,8 @@ public class VariantLoad3 extends VariantProcessingBase {
                 rowsInserted++;
             } else {
                 rowsAlreadyInRgd++;
+                sampleDetail.setId(id);
+                sampleDetailForUpdate.add(sampleDetail);
             }
 
             if( !rgdIdsWithSampleDetail.contains((int)id) ) {
@@ -567,6 +572,11 @@ public class VariantLoad3 extends VariantProcessingBase {
             }
 
         }
+
+        if( !sampleDetailForUpdate.isEmpty() ) {
+            updateVariantSample(sampleDetailForUpdate);
+        }
+
         insertVariants(varBatch);
         insertVariantMapData(varBatch);
         insertVariantSample(sampleBatch);
