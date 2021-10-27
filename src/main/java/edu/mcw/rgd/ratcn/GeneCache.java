@@ -52,21 +52,29 @@ public class GeneCache {
      */
     List<Integer> getGeneRgdIds(int pos) {
         GeneCacheEntry key = new GeneCacheEntry(0, pos, pos);
-        int i = Collections.binarySearch(entries, key, new Comparator<GeneCacheEntry>() {
+       /* int i = Collections.binarySearch(entries, key, new Comparator<GeneCacheEntry>() {
             public int compare(GeneCacheEntry o1, GeneCacheEntry o2) {
-                if( o1.stopPos < o2.startPos )
-                    return -1;
-                if( o2.stopPos < o1.startPos )
+                System.out.println(o1.rgdId + "," + o2.rgdId);
+                if( o2.stopPos < o1.startPos ) //5982114 < 5977943
                     return 1;
+                if( o1.stopPos < o2.startPos ) //5979905 < 5982114
+                    return -1;
+
                 return 0;
             }
         });
+
         if( i<0 )
             return Collections.emptyList();
-
+*/
         // there is a hit! add the hit to the results
         List<Integer> results = new ArrayList<Integer>();
-        results.add(entries.get(i).rgdId);
+        for(int i=0;i<entries.size();i++){
+            GeneCacheEntry entry = entries.get(i);
+            if(key.startPos >= entry.startPos && key.stopPos <= entry.stopPos)
+                results.add(entry.rgdId);
+        }
+ /*       results.add(entries.get(i).rgdId);
         // look for possible other hits to the left of the hit index
         for( int j=i-1; j>=0; j-- ) {
             GeneCacheEntry e = entries.get(j);
@@ -81,6 +89,7 @@ public class GeneCache {
                 break;
             results.add(e.rgdId);
         }
+        */
         return results;
     }
 
