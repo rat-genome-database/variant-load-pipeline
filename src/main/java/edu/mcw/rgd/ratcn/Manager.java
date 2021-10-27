@@ -2,6 +2,7 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.ratcn.convert.ClinVar2Vcf;
 import edu.mcw.rgd.ratcn.convert.DbSnp2Vcf;
+import edu.mcw.rgd.ratcn.convert.GwasCat2Vcf;
 import edu.mcw.rgd.ratcn.fixup.*;
 
 /**
@@ -74,6 +75,9 @@ public class Manager {
                     break;
                 case "ConservationScore":
                     ConservationScoreLoader.main(toolArgs);
+                    break;
+                case "GwasCat2Vcf":
+                    GwasCat2Vcf.main(toolArgs);
                     break;
                 default:
                     printUsage();
