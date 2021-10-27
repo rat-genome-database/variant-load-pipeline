@@ -22,7 +22,7 @@ echo "STAGE1: generate vcf files from GWAS Catalog variants"
   java $JAVA_INFO \
     --tool GwasCat2Vcf \
     --mapKey 38 \
-    --outputFile "c:/Github/variant-load-pipeline/src/main/dist/gwasCatalog/Gwas38.vcf.gz"\
+    --outputFile "$WORKDIR/Gwas38.vcf.gz" \
     > "$WORKDIR/gwas2vcf38.log"
 
   echo "  vcf generation launched in 2 processes..."
