@@ -55,9 +55,7 @@ public class GwasCat2Vcf {
                 allele = getRefAllele(mapKey, gc);
                 writeVcfLine(gc,allele,writer);
             }
-
         }
-
         writer.close();
     }
     String getRefAllele(int mapKey, GWASCatalog gc) throws Exception {
