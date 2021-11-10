@@ -51,7 +51,7 @@ public class GwasCat2Vcf {
 
         for (GWASCatalog gc : gwas) {
             String allele;
-            if (gc.getChr()!=null) {
+            if ( gc.getChr()!=null && gc.getStrongSnpRiskallele()!=null) {
                 allele = getRefAllele(mapKey, gc);
                 writeVcfLine(gc,allele,writer);
             }
