@@ -55,7 +55,7 @@ if [[ $STAGE3 -eq 1 ]]; then
   java $JAVA_INFO \
     --tool VariantLoad3 \
     --sampleId 3 --inputFile "$WORKDIR/GWASCATALOG38.txt.gz" \
-    --verifyIfInRgd \
+#    --verifyIfInRgd \
     > "$WORKDIR/loadGWAS38.log"
 
   wait
