@@ -53,6 +53,8 @@ public class GwasCat2Vcf {
             String allele;
             if ( gc.getChr()!=null && gc.getStrongSnpRiskallele()!=null) {
                 allele = getRefAllele(mapKey, gc);
+                if (gc.getStrongSnpRiskallele().equals("?"))
+                    continue;
                 writeVcfLine(gc,allele,writer);
             }
         }
