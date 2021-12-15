@@ -113,7 +113,8 @@ public class GwasCat2Vcf {
         writer.write("\t"+ref);
 
         //alt risk allele
-        writer.write("\t"+gc.getStrongSnpRiskallele());
+        String varNuc = gc.getStrongSnpRiskallele().replaceAll("\\s+","");
+        writer.write("\t"+varNuc);
 
         // QUAL
         writer.write("\tPASS");
