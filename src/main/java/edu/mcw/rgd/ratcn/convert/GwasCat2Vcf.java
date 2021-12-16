@@ -15,6 +15,8 @@ import java.util.zip.GZIPOutputStream;
 public class GwasCat2Vcf {
 
     GWASCatalogDAO dao = new GWASCatalogDAO();
+    static final int refCount = 8;
+    static final int varCount = 1;
 
     public static void main(String[] args) throws Exception{
 
@@ -129,7 +131,7 @@ public class GwasCat2Vcf {
 
         writer.write("\tGT;AD;DP");
 
-        writer.write("\t0/1:0,0:0");
+        writer.write("\t0/1:"+refCount+","+varCount+":"+(refCount+varCount));
 
         writer.write("\n");
 
