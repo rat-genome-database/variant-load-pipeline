@@ -1,8 +1,12 @@
 package edu.mcw.rgd.ratcn.convert;
 
 import edu.mcw.rgd.dao.impl.AssociationDAO;
+import edu.mcw.rgd.dao.impl.XdbIdDAO;
 import edu.mcw.rgd.dao.spring.XmlBeanFactoryManager;
 import edu.mcw.rgd.datamodel.Association;
+import edu.mcw.rgd.datamodel.RgdId;
+import edu.mcw.rgd.datamodel.XdbId;
+import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.ratcn.VariantPostProcessing;
 
 import javax.sql.DataSource;
@@ -12,8 +16,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.zip.GZIPOutputStream;
+import java.util.Map;
 
 /**
  * @author mtutaj
@@ -44,6 +49,8 @@ public class ClinVar2Vcf {
         }
 
         ClinVar2Vcf converter = new ClinVar2Vcf();
+        converter.loadVarRgdId2RsIdMap();
+
         for( int i=0; i<mapKeys.size(); i++ ) {
             converter.run(mapKeys.get(i), outputFiles.get(i));
         }
@@ -57,6 +64,9 @@ public class ClinVar2Vcf {
     int noStrandVariants;
     int plusStrandVariants;
     int minusStrandVariants;
+    int linesWritten;
+    int linesWithRsId;
+    Map<Integer, String> varRgdId2RsId = new HashMap<>();
 
     void run(int mapKey, String outputFile) throws Exception {
 
@@ -64,7 +74,7 @@ public class ClinVar2Vcf {
         System.out.println("  --mapKey     "+mapKey);
         System.out.println("  --outputFile "+outputFile);
 
-        BufferedWriter writer = openOutputFile(outputFile);
+        BufferedWriter writer = Utils.openWriter(outputFile);
         writer.write("##fileformat=VCFv4.1\n");
         writer.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tClinVar"+mapKey+"\n");
 
@@ -130,11 +140,13 @@ public class ClinVar2Vcf {
         writer.close();
 
         System.out.println("linesProcessed    ="+linesProcessed);
+        System.out.println("  linesWritten ="+linesWritten);
         System.out.println("  linesWithIssues ="+linesWithIssues);
         System.out.println("  hgvsNameUsedAsPreferredName ="+hgvsNameUsedAsPreferredName);
         System.out.println("  linesWithPlusStrand ="+plusStrandVariants);
         System.out.println("  linesWithMinusStrand ="+minusStrandVariants);
         System.out.println("  linesWithNoStrand ="+noStrandVariants);
+        System.out.println("  linesWithRsId ="+linesWithRsId);
     }
 
     boolean processPreferredName(Record r, int mapKey) throws Exception {
@@ -247,7 +259,13 @@ public class ClinVar2Vcf {
         writer.write("\tVALIDATED=1");
 
         // INFO
-        writer.write("\t");
+        String rsId = varRgdId2RsId.get(r.varRgdId);
+        if( rsId==null ) { // no rs id
+            writer.write("\t");
+        } else {
+            writer.write("DB:"+rsId+"\t");
+            linesWithRsId++;
+        }
 
         // FORMAT
         writer.write("\tGT;AD;DP");
@@ -255,6 +273,8 @@ public class ClinVar2Vcf {
         writer.write("\t0/1:"+refCount+","+varCount+":"+(refCount+varCount));
 
         writer.write("\n");
+
+        linesWritten++;
     }
 
     boolean getRefAndVarNuc(Record r) {
@@ -492,11 +512,13 @@ public class ClinVar2Vcf {
         return (DataSource) (XmlBeanFactoryManager.getInstance().getBean("DataSource"));
     }
 
-    BufferedWriter openOutputFile(String outputFile) throws IOException {
-        if( outputFile.endsWith(".gz") ) {
-            return new BufferedWriter(new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(outputFile))));
-        } else {
-            return new BufferedWriter(new FileWriter(outputFile));
+    void loadVarRgdId2RsIdMap() throws Exception {
+
+        varRgdId2RsId.clear();
+        XdbIdDAO dao = new XdbIdDAO();
+
+        for( XdbId id: dao.getActiveXdbIds(48, RgdId.OBJECT_KEY_VARIANTS) ) {
+            varRgdId2RsId.put(id.getRgdId(), id.getLinkText());
         }
     }
 

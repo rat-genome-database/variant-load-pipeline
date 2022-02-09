@@ -1,4 +1,7 @@
-﻿Jul 28, 2021
+﻿Feb 09, 2022
+  Clinvar2Vcf: added export of RS ids in INFO field: f.e. 'DB:rs549559726'
+
+Jul 28, 2021
   VariantLoader3: implemented updates of ZYGOSITY_POSS_ERROR
 
 Jul 12, 2021
