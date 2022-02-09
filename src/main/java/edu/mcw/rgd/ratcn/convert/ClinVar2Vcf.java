@@ -263,7 +263,7 @@ public class ClinVar2Vcf {
         if( rsId==null ) { // no rs id
             writer.write("\t");
         } else {
-            writer.write("DB:"+rsId+"\t");
+            writer.write("\tDB:"+rsId);
             linesWithRsId++;
         }
 
