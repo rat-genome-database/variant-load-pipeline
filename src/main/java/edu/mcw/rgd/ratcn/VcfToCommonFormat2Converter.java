@@ -62,7 +62,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         System.out.println("Finished! Elapsed "+ Utils.formatElapsedTime(timestamp, System.currentTimeMillis()));
     }
 
-    void parseCmdLine(String[] args) throws Exception {
+    public void parseCmdLine(String[] args) throws Exception {
 
         // parse cmdline params
         for( int i=0; i<args.length; i++ ) {
@@ -408,6 +408,7 @@ public class VcfToCommonFormat2Converter extends VcfToCommonFormat2Base {
         for( CommonFormat2Writer writer: outputFiles.values() ) {
             writer.close();
         }
+        outputFiles.clear();
         CommonFormat2Writer.closeDbConnection();
     }
 

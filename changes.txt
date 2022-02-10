@@ -1,6 +1,9 @@
 ﻿Feb 09, 2022
   Clinvar2Vcf: added export of RS ids in INFO field: f.e. 'DB:rs549559726'
 
+﻿Jul 7, 2021
+  patched VcfToCommonFormatConverter
+  
 May 7, 2019
   VARIANT_HUMAN renamed to VARIANT_CLINVAR, VARIANT_TRANSCRIPT_HUMAN renamed to VARIANT_TRANSCRIPT_CLINVAR
 
