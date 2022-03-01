@@ -7,6 +7,8 @@ SERVER=`hostname -s | tr '[a-z]' '[A-Z]'`
 EMAIL_LIST=mtutaj@mcw.edu,llamers@mcw.edu
 WORKDIR=$APPHOME/eva
 
+cd $APPHOME
+
   java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 360 --fastaDir "/ref/fasta/rn6" \
@@ -15,7 +17,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Rat 360 OK"
 
-    java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 70 --fastaDir "/ref/fasta/rn5" \
     --verifyIfInRgd \
@@ -23,7 +25,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Rat 70 OK"
 
-      java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 631 --fastaDir "/ref/fasta/canFam3" \
     --verifyIfInRgd \
@@ -31,7 +33,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Dog OK"
 
-        java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 1311 --fastaDir "/ref/fasta/chlSab2" \
     --verifyIfInRgd \
@@ -39,7 +41,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Green Monkey OK"
 
-      java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 910 --fastaDir "/ref/fasta/susScr3" \
     --verifyIfInRgd \
@@ -47,7 +49,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Pig 10.2 OK"
 
-    java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 911 --fastaDir "/ref/fasta/susScr11" \
     --verifyIfInRgd \
@@ -55,7 +57,7 @@ WORKDIR=$APPHOME/eva
   wait
   echo "  EVA species Pig 11.1 OK"
 
-    java $JAVA_INFO \
+  java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 35 --fastaDir "/ref/fasta/mm38" \
     --verifyIfInRgd \
