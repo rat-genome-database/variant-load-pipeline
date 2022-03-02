@@ -9,37 +9,37 @@ WORKDIR=$APPHOME/eva
 
 cd $APPHOME
 
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 360 --fastaDir "/ref/fasta/rn6" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp360.log"
-  wait
-  echo "  EVA species Rat 360 OK"
-
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 70 --fastaDir "/ref/fasta/rn5" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp70.log"
-  wait
-  echo "  EVA species Rat 70 OK"
-
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 631 --fastaDir "/ref/fasta/canFam3" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp631.log"
-  wait
-  echo "  EVA species Dog OK"
-
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 1311 --fastaDir "/ref/fasta/chlSab2" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp1311.log"
-  wait
-  echo "  EVA species Green Monkey OK"
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 360 --fastaDir "/ref/fasta/rn6" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp360.log"
+#  wait
+#  echo "  EVA species Rat 360 OK"
+#
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 70 --fastaDir "/ref/fasta/rn5" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp70.log"
+#  wait
+#  echo "  EVA species Rat 70 OK"
+#
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 631 --fastaDir "/ref/fasta/canFam3" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp631.log"
+#  wait
+#  echo "  EVA species Dog OK"
+#
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 1311 --fastaDir "/ref/fasta/chlSab2" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp1311.log"
+#  wait
+#  echo "  EVA species Green Monkey OK"
 
   java $JAVA_INFO \
     --tool VariantPostProcessing \
@@ -57,10 +57,10 @@ cd $APPHOME
   wait
   echo "  EVA species Pig 11.1 OK"
 
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 35 --fastaDir "/ref/fasta/mm38" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp35.log"
-  wait
-  echo "  EVA species Mouse OK"
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 35 --fastaDir "/ref/fasta/mm38" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp35.log"
+#  wait
+#  echo "  EVA species Mouse OK"
