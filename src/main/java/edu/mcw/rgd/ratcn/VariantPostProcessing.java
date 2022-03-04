@@ -836,7 +836,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         vt.setFrameShift(frameShift);
         vt.setMapKey(mapKey);
-        batch.addToBatch(vt);
+        batch.addToBatch(vt, getLogWriter());
     }
 
     void writeError(String msg, int mapKey) throws IOException {
