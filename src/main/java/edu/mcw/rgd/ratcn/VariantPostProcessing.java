@@ -265,7 +265,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         variantRow.close();
 
-        batch.flush();
+        batch.flush(getLogWriter());
 
         String msg = "assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
                 +", up-to-date="+batch.getRowsUpToDate()
