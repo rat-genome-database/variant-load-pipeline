@@ -174,7 +174,7 @@ public class VariantTranscriptBatch {
 
         }
 
-       bsu.flush();
+//       bsu.flush();
     }
 
     void insertRowsWithoutBatch(BufferedWriter bw) throws Exception{
