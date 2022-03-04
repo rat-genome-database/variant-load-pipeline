@@ -7,7 +7,6 @@ import edu.mcw.rgd.dao.spring.StringListQuery;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
-import sun.awt.windows.WBufferStrategy;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
