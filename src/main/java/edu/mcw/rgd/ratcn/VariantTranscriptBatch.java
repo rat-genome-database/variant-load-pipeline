@@ -8,9 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -104,10 +102,10 @@ public class VariantTranscriptBatch {
      * @param vt VariantTranscript object
      * @return count of rows written to database
      */
-    public int addToBatch(VariantTranscript vt, BufferedWriter bw) throws Exception {
+    public int addToBatch(VariantTranscript vt) throws Exception {
         batch.add(vt);
         if( batch.size()>=BATCH_SIZE )
-            return flush(bw);
+            return flush();
         else
             return 0;
     }
@@ -116,12 +114,12 @@ public class VariantTranscriptBatch {
      *
      * @return count of rows written to database
      */
-    public int flush(BufferedWriter bw) throws Exception {
+    public int flush() throws Exception {
         if( batch.isEmpty() )
             return 0;
 
         if( isVerifyIfInRgd() )
-            insertRowsWithVerify(bw);
+            insertRowsWithVerify();
         else
             insertRowsNoVerify();
 
@@ -176,7 +174,7 @@ public class VariantTranscriptBatch {
        bsu.flush();
     }
 
-    void insertRowsWithoutBatch(BufferedWriter bw) throws Exception{
+    void insertRowsWithoutBatch() throws Exception{
         if (batch.isEmpty())
             return;
         String sql = "INSERT INTO VARIANT_TRANSCRIPT \n" +
@@ -208,12 +206,12 @@ public class VariantTranscriptBatch {
                 ps.executeQuery();
             }
             catch (Exception e){
-                bw.write("variant_rgd_id="+vt.getVariantId()+" transcript_rgd_id="+ vt.getTranscriptRgdId()+" map_key="+vt.getMapKey());
+                System.out.println("variant_rgd_id="+vt.getVariantId()+" transcript_rgd_id="+ vt.getTranscriptRgdId()+" map_key="+vt.getMapKey());
             }
         }
     }
 
-    void insertRowsWithVerify(BufferedWriter bw) throws Exception {
+    void insertRowsWithVerify() throws Exception {
 
         if( vtData!=null ) {
             // use preloaded data
@@ -236,7 +234,7 @@ public class VariantTranscriptBatch {
                 }
             }
         }
-        insertRowsWithoutBatch(bw);
+        insertRowsNoVerify();
     }
 
     public boolean isVerifyIfInRgd() {

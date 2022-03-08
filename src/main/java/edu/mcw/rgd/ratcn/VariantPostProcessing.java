@@ -1,8 +1,12 @@
 package edu.mcw.rgd.ratcn;
 
+import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.dao.impl.SequenceDAO;
+import edu.mcw.rgd.dao.impl.TranscriptDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
+import edu.mcw.rgd.datamodel.MapData;
 import edu.mcw.rgd.datamodel.Sequence;
+import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.process.mapping.MapManager;
@@ -32,6 +36,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
     private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
+    MapDAO mdao = new MapDAO();
+    TranscriptDAO tdao = new TranscriptDAO();
 
     public static void main(String[] args) throws Exception {
 
@@ -265,7 +271,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         variantRow.close();
 
-        batch.flush(getLogWriter());
+        batch.flush();
 
         String msg = "assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
                 +", up-to-date="+batch.getRowsUpToDate()
@@ -404,6 +410,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 // Skip those exons that have been removed. These have had their start / stop marked as -1
                 if (feature.start != -1) {
                     String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
+//                    // check dnaChunk is null, use rgdId, map_key, start, and stop for map data
+//                    if (Utils.isStringEmpty(dnaChunk)){
+//                        getLogWriter().write("transcript_rgd_id="+transcriptRgdId);
+//                        Transcript t = tdao.getTranscript(transcriptRgdId);
+//                        List<MapData> mapData = mdao.getMapData(t.getRgdId(),mapKey);
+//                        for (MapData m : mapData) {
+//
+//                        }
+//                    }
                     getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
                     refDna.append(dnaChunk);
                     varDna.append(dnaChunk);
@@ -447,8 +462,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 variantRelPos = refDna.length() - variantRelPos + 1;
                 getLogWriter().write("		variantRelPos set now set to : " + variantRelPos + "\n");
                 // Dealing with "-" strand , reverse the DNA
-                refDna = reverseComplement(refDna);
-                varDna = reverseComplement(varDna);
+                refDna = reverseComplement(refDna, transcriptRgdId);
+                varDna = reverseComplement(varDna, transcriptRgdId);
             } else {
                 getLogWriter().write("		Positive Strand found " + "\n");
             }
@@ -577,7 +592,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
     }
 
-    static public StringBuffer reverseComplement(CharSequence dna) throws Exception {
+    static public StringBuffer reverseComplement(CharSequence dna, int transcriptRgdId) throws Exception {
 
         StringBuffer buf = new StringBuffer(dna.length());
         for( int i=dna.length()-1; i>=0; i-- ) {
@@ -593,7 +608,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             } else if( ch=='N' || ch=='n' ) {
                 buf.append('N');
             }
-            else throw new Exception("reverseComplement: unexpected nucleotide ["+ch+"]");
+            else throw new Exception("reverseComplement: unexpected nucleotide ["+ch+"] with transcript_rgd_id="+transcriptRgdId);
         }
         return buf;
     }
@@ -836,7 +851,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         vt.setFrameShift(frameShift);
         vt.setMapKey(mapKey);
-        batch.addToBatch(vt, getLogWriter());
+        batch.addToBatch(vt);
     }
 
     void writeError(String msg, int mapKey) throws IOException {

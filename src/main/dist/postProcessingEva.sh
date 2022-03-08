@@ -17,13 +17,13 @@ cd $APPHOME
 #  wait
 #  echo "  EVA species Rat 360 OK"
 #
-#  java $JAVA_INFO \
-#    --tool VariantPostProcessing \
-#    --mapKey 70 --fastaDir "/ref/fasta/rn5" \
-#    --verifyIfInRgd \
-#    > "$WORKDIR/vpp70.log"
-#  wait
-#  echo "  EVA species Rat 70 OK"
+  java $JAVA_INFO \
+    --tool VariantPostProcessing \
+    --mapKey 70 --fastaDir "/ref/fasta/rn5" \
+    --verifyIfInRgd \
+    > "$WORKDIR/vpp70.log"
+  wait
+  echo "  EVA species Rat 70 OK"
 #
 #  java $JAVA_INFO \
 #    --tool VariantPostProcessing \
@@ -49,13 +49,13 @@ cd $APPHOME
 #  wait
 #  echo "  EVA species Pig 10.2 OK"
 #
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 911 --fastaDir "/ref/fasta/susScr11" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp911.log"
-  wait
-  echo "  EVA species Pig 11.1 OK"
+#  java $JAVA_INFO \
+#    --tool VariantPostProcessing \
+#    --mapKey 911 --fastaDir "/ref/fasta/susScr11" \
+#    --verifyIfInRgd \
+#    > "$WORKDIR/vpp911.log"
+#  wait
+#  echo "  EVA species Pig 11.1 OK"
 #
 #  java $JAVA_INFO \
 #    --tool VariantPostProcessing \
