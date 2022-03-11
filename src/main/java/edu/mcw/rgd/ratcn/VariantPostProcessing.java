@@ -134,7 +134,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         FastaParser fastaParser = new FastaParser();
         fastaParser.setMapKey(mapKey, this.getFastaDir());
         List<String> chromosomes = getChromosomes(mapKey);
-        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
+//        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
         for( String chr: chromosomes ) {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
                 continue;
@@ -409,16 +409,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
             for (Feature feature: tflags.exomsArray) {
                 // Skip those exons that have been removed. These have had their start / stop marked as -1
                 if (feature.start != -1) {
-                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
-//                    // check dnaChunk is null, use rgdId, map_key, start, and stop for map data
-//                    if (Utils.isStringEmpty(dnaChunk)){
-//                        getLogWriter().write("transcript_rgd_id="+transcriptRgdId);
-//                        Transcript t = tdao.getTranscript(transcriptRgdId);
-//                        List<MapData> mapData = mdao.getMapData(t.getRgdId(),mapKey);
-//                        for (MapData m : mapData) {
-//
-//                        }
-//                    }
+//                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
+                    String dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
                     getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
                     refDna.append(dnaChunk);
                     varDna.append(dnaChunk);
@@ -1270,5 +1262,26 @@ public class VariantPostProcessing extends VariantProcessingBase {
         public String nearSpliceSite = "F";
         public String transcriptLocation = null;
         public boolean inExon = false;
+    }
+
+    String getProperChunk(FastaParser fastaFile, int transcriptRgdId, String chr, int start, int stop, int mapKey) throws Exception{
+        String newDnaChunk = "";
+        Transcript t = tdao.getTranscript(transcriptRgdId);
+        List<MapData> mapData = mdao.getMapData(t.getRgdId(), mapKey);
+        if (mapData.isEmpty())
+            return getDnaChunk(fastaFile, start,stop);
+        for (MapData m : mapData) {
+             if (!m.getChromosome().equals(chr) && start==m.getStartPos()){
+                fastaFile.setChr(m.getChromosome());
+                newDnaChunk = getDnaChunk(fastaFile,m.getStartPos(),m.getStopPos());
+                fastaFile.setChr(chr);
+                break;
+            }
+        }
+        if (newDnaChunk.isEmpty())
+            return getDnaChunk(fastaFile, start,stop);
+
+        return newDnaChunk;
+
     }
 }

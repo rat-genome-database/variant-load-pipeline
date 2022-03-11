@@ -9,14 +9,14 @@ WORKDIR=$APPHOME/eva
 
 cd $APPHOME
 
-#  java $JAVA_INFO \
-#    --tool VariantPostProcessing \
-#    --mapKey 360 --fastaDir "/ref/fasta/rn6" \
-#    --verifyIfInRgd \
-#    > "$WORKDIR/vpp360.log"
-#  wait
-#  echo "  EVA species Rat 360 OK"
-#
+  java $JAVA_INFO \
+    --tool VariantPostProcessing \
+    --mapKey 360 --fastaDir "/ref/fasta/rn6" \
+    --verifyIfInRgd \
+    > "$WORKDIR/vpp360.log"
+  wait
+  echo "  EVA species Rat 360 OK"
+
   java $JAVA_INFO \
     --tool VariantPostProcessing \
     --mapKey 70 --fastaDir "/ref/fasta/rn5" \
