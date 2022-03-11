@@ -139,6 +139,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
                 continue;
             }
+
             System.out.println("  chr "+chr);
 
             processChromosome(chr, fastaParser);
