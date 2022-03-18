@@ -134,7 +134,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         FastaParser fastaParser = new FastaParser();
         fastaParser.setMapKey(mapKey, this.getFastaDir());
         List<String> chromosomes = getChromosomes(mapKey);
-//        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
+        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
         for( String chr: chromosomes ) {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
                 continue;
