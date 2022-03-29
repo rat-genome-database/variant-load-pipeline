@@ -35,7 +35,7 @@ cd $APPHOME
 
   java $JAVA_INFO \
     --tool VariantPostProcessing \
-    --mapKey 1311 --fastaDir "/ref/fasta/veroWho" \
+    --mapKey 1311 --fastaDir "/ref/fasta/chlSab2" \
     --verifyIfInRgd \
     > "$WORKDIR/vpp1311.log"
   wait
