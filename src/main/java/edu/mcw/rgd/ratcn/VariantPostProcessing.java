@@ -1,11 +1,11 @@
 package edu.mcw.rgd.ratcn;
 
-import edu.mcw.rgd.dao.impl.SampleDAO;
-import edu.mcw.rgd.dao.impl.SequenceDAO;
-import edu.mcw.rgd.dao.impl.VariantDAO;
+import edu.mcw.rgd.dao.impl.*;
 import edu.mcw.rgd.dao.spring.StringListQuery;
+import edu.mcw.rgd.datamodel.MapData;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Sequence;
+import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.process.mapping.MapManager;
@@ -35,6 +35,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
     private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
+    MapDAO mdao = new MapDAO();
+    TranscriptDAO tdao = new TranscriptDAO();
 
     public static void main(String[] args) throws Exception {
 
@@ -410,7 +412,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             for (Feature feature: tflags.exomsArray) {
                 // Skip those exons that have been removed. These have had their start / stop marked as -1
                 if (feature.start != -1) {
-                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
+                    String dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
                     getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
                     refDna.append(dnaChunk);
                     varDna.append(dnaChunk);
@@ -1262,5 +1264,25 @@ public class VariantPostProcessing extends VariantProcessingBase {
         public String nearSpliceSite = "F";
         public String transcriptLocation = null;
         public boolean inExon = false;
+    }
+    String getProperChunk(FastaParser fastaFile, int transcriptRgdId, String chr, int start, int stop, int mapKey) throws Exception{
+        String newDnaChunk = "";
+        Transcript t = tdao.getTranscript(transcriptRgdId);
+        List<MapData> mapData = mdao.getMapData(t.getRgdId(), mapKey);
+        if (mapData.isEmpty())
+            return getDnaChunk(fastaFile, start,stop);
+        for (MapData m : mapData) {
+            if (!m.getChromosome().equals(chr) && start==m.getStartPos()){
+                fastaFile.setChr(m.getChromosome());
+                newDnaChunk = getDnaChunk(fastaFile,m.getStartPos(),m.getStopPos());
+                fastaFile.setChr(chr);
+                break;
+            }
+        }
+        if (newDnaChunk.isEmpty())
+            return getDnaChunk(fastaFile, start,stop);
+
+        return newDnaChunk;
+
     }
 }
