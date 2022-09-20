@@ -201,6 +201,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
             String variantNuc = variantRow.getString(4);
             String refNuc = variantRow.getString(5);
 
+            if(variantNuc!=null && variantNuc.contains(","))
+                continue;
+
             getLogWriter().write("------------------- Start Processing of Variant ---------\n");
             getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
 
