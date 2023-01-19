@@ -63,4 +63,12 @@ cd $APPHOME
     --verifyIfInRgd \
     > "$WORKDIR/vpp35.log"
   wait
-  echo "  EVA species Mouse OK"
+  echo "  EVA species Mouse 38 OK"
+
+    java $JAVA_INFO \
+      --tool VariantPostProcessing \
+      --mapKey 239 --fastaDir "/ref/fasta/mm39" \
+      --verifyIfInRgd \
+      > "$WORKDIR/vpp39.log"
+    wait
+    echo "  EVA species Mouse 39 OK"
