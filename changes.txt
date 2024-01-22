@@ -1,4 +1,7 @@
-﻿Feb 09, 2022
+﻿Jan 22, 2023
+VariantPostProcessing: updated for exons that begin in/out-side of a gene per RGDD-2076
+
+Feb 09, 2022
   Clinvar2Vcf: added export of RS ids in INFO field: f.e. 'DB:rs549559726'
 
 Jul 28, 2021

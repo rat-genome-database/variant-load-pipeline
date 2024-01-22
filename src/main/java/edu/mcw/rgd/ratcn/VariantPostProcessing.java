@@ -413,8 +413,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
             for (Feature feature: tflags.exomsArray) {
                 // Skip those exons that have been removed. These have had their start / stop marked as -1
                 if (feature.start != -1) {
+                    String dnaChunk;
 //                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
-                    String dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
+                    if (variantRelPos < feature.start)
+                        dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, variantRelPos, feature.stop, mapKey);
+                    else if (variantRelPos > feature.stop)
+                        dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, variantRelPos, mapKey);
+                    else
+                        dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
                     getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
                     refDna.append(dnaChunk);
                     varDna.append(dnaChunk);
@@ -423,27 +429,25 @@ public class VariantPostProcessing extends VariantProcessingBase {
             varDna = new StringBuffer(varDna.toString().toLowerCase());
 
             // handle deletion
-            if( varNuc == null || varNuc.contains("-")  ) {
+            if (varNuc == null || varNuc.contains("-")) {
                 int deletionLength;
-                if(varNuc == null)
+                if (varNuc == null)
                     deletionLength = 1;
                 else deletionLength = varNuc.length();
-                varDna.replace(variantRelPos-1, variantRelPos-1+deletionLength, "");
+                varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, "");
             }
             // handle insertion
-            else if(refNuc == null || refNuc.contains("-") ) {
-                varDna.insert(variantRelPos-1, varNuc);
+            else if (refNuc == null || refNuc.contains("-")) {
+                varDna.insert(variantRelPos - 1, varNuc);
             }
             // handle insertion
-            else if( refNuc.length()==1 && varNuc.length()>1 ) {
+            else if (refNuc.length() == 1 && varNuc.length() > 1) {
                 varDna.insert(variantRelPos, varNuc.substring(1));
-            }
-            else if( refNuc.length()!=1 || varNuc.length()!=1 ) {
-                int deletionLength = varStop-varStart;
-                varDna.replace(variantRelPos-1, variantRelPos-1+deletionLength, varNuc);
-            }
-            else {
-                varDna.setCharAt(variantRelPos-1, varNuc.charAt(0));
+            } else if (refNuc.length() != 1 || varNuc.length() != 1) {
+                int deletionLength = varStop - varStart;
+                varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, varNuc);
+            } else {
+                varDna.setCharAt(variantRelPos - 1, varNuc.charAt(0));
             }
 
             refDna = new StringBuffer(refDna.toString().toLowerCase());
