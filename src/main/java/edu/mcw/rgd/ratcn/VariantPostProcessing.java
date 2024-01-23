@@ -854,7 +854,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         }
         catch (Exception e){
-            logStatusMsg("Error with refNuc\n"+fullRefNuc);
+            logStatusMsg("Error with refNuc\n"+fullRefNuc.length());
             logStatusMsg("\nVariant ID: "+ variantId);
         }
     }
