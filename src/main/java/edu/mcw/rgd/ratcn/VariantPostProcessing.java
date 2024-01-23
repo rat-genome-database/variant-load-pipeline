@@ -416,9 +416,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     String dnaChunk;
 //                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
                     if (variantRelPos < feature.start)
-                        dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, variantRelPos, feature.stop, mapKey);
+                        dnaChunk = getDnaChunk(fastaFile, variantRelPos, feature.stop);
                     else if (variantRelPos > feature.stop)
-                        dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, variantRelPos, mapKey);
+                        dnaChunk = getDnaChunk(fastaFile, feature.start, variantRelPos);
                     else
                         dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
                     getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
