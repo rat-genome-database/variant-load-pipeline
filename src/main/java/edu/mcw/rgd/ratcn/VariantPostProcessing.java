@@ -772,86 +772,91 @@ public class VariantPostProcessing extends VariantProcessingBase {
                                  String transcriptLocation, String nearSpliceSite, Integer fullRefAaPos, Integer fullRefNucPos,
                                  String tripletError, String fullRefAA, String fullRefNuc, String frameShift,String chr) throws Exception {
 
+        try {
+            int fullRefAASeqKey;
+            int fullRefNucSeqKey;
+            SequenceDAO sequenceDAO = new SequenceDAO();
+            VariantTranscript vt = new VariantTranscript();
+            vt.setVariantId(variantId);
+            vt.setTranscriptRgdId(transcriptRgdId);
+            vt.setRefAA(refAA);
+            vt.setVarAA(varAA);
+            vt.setSynStatus(synStatus);
+            vt.setLocationName(transcriptLocation);
+            vt.setNearSpliceSite(nearSpliceSite);
+            vt.setFullRefAAPos(fullRefAaPos);
+            vt.setFullRefNucPos(fullRefNucPos);
+            vt.setTripletError(tripletError);
+            String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
 
-        int fullRefAASeqKey;
-        int fullRefNucSeqKey;
-        SequenceDAO sequenceDAO = new SequenceDAO();
-        VariantTranscript vt = new VariantTranscript();
-        vt.setVariantId(variantId);
-        vt.setTranscriptRgdId(transcriptRgdId);
-        vt.setRefAA(refAA);
-        vt.setVarAA(varAA);
-        vt.setSynStatus(synStatus);
-        vt.setLocationName(transcriptLocation);
-        vt.setNearSpliceSite(nearSpliceSite);
-        vt.setFullRefAAPos(fullRefAaPos);
-        vt.setFullRefNucPos(fullRefNucPos);
-        vt.setTripletError(tripletError);
-        String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
-
-        if(fullRefAA != null) {
-            Sequence seq = new Sequence();
-            seq.setRgdId(transcriptRgdId);
-            seq.setSeqData(fullRefAA);
-            List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
-            if (!aaseqs.isEmpty()) {
-                String s = aaseqs.get(0).getSeqData();
-                if(s.equalsIgnoreCase(fullRefAA)) {
-                    fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                }
-                else{
-                    aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_"+assembly);
-                    if(aaseqs.isEmpty()) {
-                        aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_aa_"+assembly+"_"+chr);
-                        if(aaseqs.isEmpty()) {
-                            seq.setSeqType("full_ref_aa_" + assembly);
-                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-                        }else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                    }else {
-                        s = aaseqs.get(0).getSeqData();
-                        if (s.equalsIgnoreCase(fullRefAA)) {
-                            fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                        }else {
-                            seq.setSeqType("full_ref_aa_" + assembly+"_"+chr);
-                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+            if (fullRefAA != null) {
+                Sequence seq = new Sequence();
+                seq.setRgdId(transcriptRgdId);
+                seq.setSeqData(fullRefAA);
+                List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
+                if (!aaseqs.isEmpty()) {
+                    String s = aaseqs.get(0).getSeqData();
+                    if (s.equalsIgnoreCase(fullRefAA)) {
+                        fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                    } else {
+                        aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_" + assembly);
+                        if (aaseqs.isEmpty()) {
+                            aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_" + assembly + "_" + chr);
+                            if (aaseqs.isEmpty()) {
+                                seq.setSeqType("full_ref_aa_" + assembly);
+                                fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                            } else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                        } else {
+                            s = aaseqs.get(0).getSeqData();
+                            if (s.equalsIgnoreCase(fullRefAA)) {
+                                fullRefAASeqKey = aaseqs.get(0).getSeqKey();
+                            } else {
+                                seq.setSeqType("full_ref_aa_" + assembly + "_" + chr);
+                                fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                            }
                         }
                     }
+                    vt.setFullRefAASeqKey(fullRefAASeqKey);
+                } else {
+                    seq.setSeqType("full_ref_aa");
+                    fullRefAASeqKey = sequenceDAO.insertSequence(seq);
+                    vt.setFullRefAASeqKey(fullRefAASeqKey);
                 }
-                vt.setFullRefAASeqKey(fullRefAASeqKey);
-            }else{
-                seq.setSeqType("full_ref_aa");
-                fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-                vt.setFullRefAASeqKey(fullRefAASeqKey);
+
             }
+            if (fullRefNuc != null) {
+                List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
+                Sequence seq = new Sequence();
+                seq.setSeqData(fullRefNuc);
+                seq.setRgdId(transcriptRgdId);
+                if (nucSeqs.isEmpty()) {
+                    seq.setSeqType("full_ref_nuc");
+                    fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
+                    vt.setFullRefNucSeqKey(fullRefNucSeqKey);
+                } else {
+                    String s = nucSeqs.get(0).getSeqData();
+                    if (s.equalsIgnoreCase(fullRefNuc)) {
+                        fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                    } else {
+                        nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc_" + assembly);
+                        if (nucSeqs.isEmpty()) {
+                            seq.setSeqType("full_ref_nuc_" + assembly);
+                            fullRefNucSeqKey = sequenceDAO.insertSequence(seq); // broke here
+                        } else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
+                    }
+                    vt.setFullRefNucSeqKey(fullRefNucSeqKey);
+                }
+
+            }
+            vt.setFrameShift(frameShift);
+            vt.setMapKey(mapKey);
+            batch.addToBatch(vt);
 
         }
-        if(fullRefNuc != null) {
-            List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
-            Sequence seq = new Sequence();
-            seq.setSeqData(fullRefNuc);
-            seq.setRgdId(transcriptRgdId);
-            if (nucSeqs.isEmpty()) {
-                seq.setSeqType("full_ref_nuc");
-                fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
-                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
-            } else {
-                String s = nucSeqs.get(0).getSeqData();
-                if(s.equalsIgnoreCase(fullRefNuc)) {
-                    fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
-                }else {
-                    nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId,"full_ref_nuc_"+assembly);
-                    if(nucSeqs.isEmpty()) {
-                        seq.setSeqType("full_ref_nuc_" + assembly);
-                        fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
-                    }else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
-                }
-                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
-            }
-
+        catch (Exception e){
+            logStatusMsg("Error with refNuc\n"+fullRefNuc);
+            logStatusMsg("\nVariant ID: "+ variantId);
         }
-        vt.setFrameShift(frameShift);
-        vt.setMapKey(mapKey);
-        batch.addToBatch(vt);
     }
 
     void writeError(String msg, int mapKey) throws IOException {
