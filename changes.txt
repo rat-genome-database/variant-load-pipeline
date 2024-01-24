@@ -1,4 +1,7 @@
-﻿Jan 22, 2023
+﻿Jan 24, 2024
+reverting postporcessing changes because Logan found the a bug in the HRDP pipeline
+
+Jan 22, 2024
 VariantPostProcessing: updated for exons that begin in/out-side of a gene per RGDD-2076
 
 Feb 09, 2022
