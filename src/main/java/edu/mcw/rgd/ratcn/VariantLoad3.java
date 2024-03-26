@@ -531,11 +531,11 @@ public class VariantLoad3 extends VariantProcessingBase {
 
         // handle insertions
         if( refSeq.length()==0 )
-            return "ins";
+            return "insertion";
 
         // handle deletions
         if( varSeq.length()==0 )
-            return "del";
+            return "deletion";
 
         // handle snv
         return "snv";
