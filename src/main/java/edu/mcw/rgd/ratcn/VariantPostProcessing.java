@@ -937,6 +937,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         psVariant.setInt(1, mapKey);
         psVariant.setString(2, chr);
+        psVariant.setInt(3, mapKey);
+        psVariant.setString(4, chr);
         return psVariant.executeQuery();
     }
 
