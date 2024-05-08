@@ -601,6 +601,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 buf.append('A');
             } else if( ch=='N' || ch=='n' ) {
                 buf.append('N');
+            } else if (ch=='?'){
+                buf.append('?');
             }
             else throw new Exception("reverseComplement: unexpected nucleotide ["+ch+"] with transcript_rgd_id="+transcriptRgdId);
         }
