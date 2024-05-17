@@ -424,16 +424,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             // handle deletion
             if (varNuc == null || varNuc.contains("-")) {
-                try {
-                    int deletionLength;
-                    if (varNuc == null)
-                        deletionLength = 1;
-                    else deletionLength = varNuc.length();
-                    varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, "");
-                }
-                catch (Exception e){
-                    System.out.println(variantId);
-                }
+                int deletionLength;
+                if (varNuc == null)
+                    deletionLength = 1;
+                else deletionLength = varNuc.length();
+                varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, "");
             }
             // handle insertion
             else if (refNuc == null || refNuc.contains("-")) {
