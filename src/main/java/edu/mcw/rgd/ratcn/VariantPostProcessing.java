@@ -878,11 +878,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
 //                "FROM variant v inner join variant_map_data vm on v.rgd_id = vm.rgd_id and vm.map_key = ? and vm.chromosome = ?";
         String sql = """
                 select * from (
-                SELECT v.rgd_id,vm.START_POS,vm.END_POS,v.var_nuc, v.ref_nuc\s
+                SELECT v.rgd_id,vm.START_POS,vm.END_POS,v.var_nuc, v.ref_nuc
                 FROM variant v, variant_map_data vm, RGD_IDS r where v.rgd_id=vm.rgd_id and r.rgd_id=v.rgd_id and r.OBJECT_STATUS='ACTIVE' and vm.map_key = ? and vm.chromosome = ?
                 UNION ALL
                 SELECT v.rgd_id,vmd.START_POS,vmd.END_POS,v.var_nuc, v.ref_nuc
-                FROM variant_ext v, variant_map_data vmd, RGD_IDS r where v.rgd_id=vmd.rgd_id and r.rgd_id=v.rgd_id and r.OBJECT_STATUS='ACTIVE' and vmd.map_key = ? and vmd.map_key = ?
+                FROM variant_ext v, variant_map_data vmd, RGD_IDS r where v.rgd_id=vmd.rgd_id and r.rgd_id=v.rgd_id and r.OBJECT_STATUS='ACTIVE' and vmd.map_key = ? and vmd.chromosome = ?
                 )""";
         psVariant = getVariantDataSource().getConnection().prepareStatement(sql);
 
