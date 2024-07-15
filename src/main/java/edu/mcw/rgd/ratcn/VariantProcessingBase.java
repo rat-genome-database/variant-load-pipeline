@@ -3,6 +3,7 @@ package edu.mcw.rgd.ratcn;
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.GenomicElementDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
+import edu.mcw.rgd.dao.impl.variants.VariantDAO;
 import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.GenomicElement;
@@ -34,6 +35,7 @@ public class VariantProcessingBase {
     private DataSource dataSource;
     private BufferedWriter logWriter;
     private Logger logStatus = Logger.getLogger("status");
+    VariantDAO vdao = new VariantDAO();
 
     public VariantProcessingBase() throws Exception {
 
@@ -221,6 +223,7 @@ public class VariantProcessingBase {
     }
 
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
+        insertVariantRgdIds(mapsData);
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (\n" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY)\n" +
@@ -293,6 +296,7 @@ public class VariantProcessingBase {
 
 
     public void insertVariant(VariantMapData v)  throws Exception{
+        insertVariantRgdId(v);
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY) " +
@@ -379,6 +383,25 @@ public class VariantProcessingBase {
 
 
 
+    }
+    public void insertVariantRgdIds(List<VariantMapData> vmds) throws Exception{
+        BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+                "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)", new int[]{Types.INTEGER},5000);
+        sql.compile();
+        for (VariantMapData vmd : vmds){
+            long rgdId = vmd.getId();
+            sql.update(rgdId);
+        }
+        sql.flush();
+    }
+
+    public void insertVariantRgdId(VariantMapData v)  throws Exception{
+
+        SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
+                "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)",
+                new int[]{Types.INTEGER});
+        sql1.compile();
+        sql1.update(v.getId());
     }
     public DataSource getVariantDataSource() throws Exception{
         return DataSourceFactory.getInstance().getCarpeNovoDataSource();
