@@ -390,7 +390,7 @@ public class VariantProcessingBase {
         sql.compile();
         for (VariantMapData vmd : vmds){
             long rgdId = vmd.getId();
-            sql.update(rgdId);
+            sql.update((int)rgdId);
         }
         sql.flush();
     }
@@ -401,7 +401,7 @@ public class VariantProcessingBase {
                 "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)",
                 new int[]{Types.INTEGER});
         sql1.compile();
-        sql1.update(v.getId());
+        sql1.update((int)v.getId());
     }
     public DataSource getVariantDataSource() throws Exception{
         return DataSourceFactory.getInstance().getCarpeNovoDataSource();
