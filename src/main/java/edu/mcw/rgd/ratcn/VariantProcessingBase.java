@@ -223,7 +223,6 @@ public class VariantProcessingBase {
     }
 
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
-        insertVariantRgdIds(mapsData);
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (\n" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY)\n" +
@@ -296,7 +295,6 @@ public class VariantProcessingBase {
 
 
     public void insertVariant(VariantMapData v)  throws Exception{
-        insertVariantRgdId(v);
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY) " +

@@ -454,6 +454,7 @@ public class VariantLoad3 extends VariantProcessingBase {
             }
             mdata.add(mapData);
 
+            insertVariantRgdId(mapData);
             insertVariant(mapData);
             insertVariantMapData(mapData);
             insertVariantSample(sampleDetail);
@@ -577,6 +578,7 @@ public class VariantLoad3 extends VariantProcessingBase {
             updateVariantSample(sampleDetailForUpdate);
         }
 
+        insertVariantRgdIds(varBatch);
         insertVariants(varBatch);
         insertVariantMapData(varBatch);
         insertVariantSample(sampleBatch);
