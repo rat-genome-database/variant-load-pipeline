@@ -6,7 +6,8 @@ import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.StringListQuery;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.datamodel.Transcript;
-import org.springframework.beans.factory.xml.XmlBeanFactory;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.SqlParameter;
 
@@ -35,7 +36,9 @@ public class PolyphenFasta extends VariantProcessingBase {
 
     public static void main(String[] args) throws Exception {
 
-        XmlBeanFactory bf=new XmlBeanFactory(new FileSystemResource("properties/AppConfigure.xml"));
+//        XmlBeanFactory bf=new XmlBeanFactory(new FileSystemResource("properties/AppConfigure.xml"));
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(new FileSystemResource("properties/AppConfigure.xml"));
         PolyphenFasta instance = (PolyphenFasta) (bf.getBean("polyphenFasta"));
 
         // process args

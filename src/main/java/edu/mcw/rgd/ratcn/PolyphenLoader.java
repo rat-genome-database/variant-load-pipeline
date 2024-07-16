@@ -3,7 +3,8 @@ package edu.mcw.rgd.ratcn;
 import edu.mcw.rgd.dao.impl.VariantDAO;
 import edu.mcw.rgd.dao.spring.CountQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
-import org.springframework.beans.factory.xml.XmlBeanFactory;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.SqlParameter;
 import org.springframework.jdbc.object.BatchSqlUpdate;
@@ -34,7 +35,9 @@ public class PolyphenLoader extends VariantProcessingBase {
 
     public static void main(String[] args) throws Exception {
 
-        XmlBeanFactory bf=new XmlBeanFactory(new FileSystemResource("properties/AppConfigure.xml"));
+//        XmlBeanFactory bf=new XmlBeanFactory(new FileSystemResource("properties/AppConfigure.xml"));
+        DefaultListableBeanFactory bf = new DefaultListableBeanFactory();
+        new XmlBeanDefinitionReader(bf).loadBeanDefinitions(new FileSystemResource("properties/AppConfigure.xml"));
         PolyphenLoader instance = (PolyphenLoader) (bf.getBean("polyphenLoader"));
 
         // process args

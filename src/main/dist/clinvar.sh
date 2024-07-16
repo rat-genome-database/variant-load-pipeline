@@ -6,7 +6,7 @@
 . /etc/profile
 APPHOME=/home/rgddata/pipelines/ratStrainLoader
 LOG4J_INFO="-Dlog4j.configuration=file://$APPHOME/properties/log4j.properties"
-DBCONN_INFO="-Dspring.config=$APPHOME/../properties/default_db.xml -Djava.security.egd=file:/dev/../dev/urandom"
+DBCONN_INFO="-Dspring.config=$APPHOME/../properties/default_db2.xml -Djava.security.egd=file:/dev/../dev/urandom"
 JAVA_INFO="$DBCONN_INFO $LOG4J_INFO -jar lib/ratStrainLoader.jar"
 SERVER=`hostname -s | tr '[a-z]' '[A-Z]'`
 EMAIL_LIST=mtutaj@mcw.edu
@@ -71,7 +71,7 @@ if [[ $STAGE3 -eq 1 ]]; then
     --sampleId 1 --inputFile "$WORKDIR/ClinVar17.txt.gz" \
     --verifyIfInRgd \
     --clinvar \
-    > "$WORKDIR/load37.log" 
+    > "$WORKDIR/load37.log" &
 
   java $JAVA_INFO \
     --tool VariantLoad3 \

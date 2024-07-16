@@ -84,7 +84,6 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
             }
         }
 
-        //instance.insertClinvarIds();
 
     }
 
@@ -375,7 +374,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
     }
 
     public DataSource getVariantDataSource() throws Exception{
-        return DataSourceFactory.getInstance().getCarpeNovoDataSource();
+        return DataSourceFactory.getInstance().getDataSource("Variant");
     }
 
 }

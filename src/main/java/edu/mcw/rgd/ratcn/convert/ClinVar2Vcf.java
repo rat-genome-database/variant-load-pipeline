@@ -225,10 +225,10 @@ public class ClinVar2Vcf {
 
             // convert refNuc and varNuc to negative strand
             if( !r.varNuc.equals("-") ) {
-                r.varNuc = VariantPostProcessing.reverseComplement(r.varNuc).toString();
+                r.varNuc = VariantPostProcessing.reverseComplement(r.varNuc,r.geneRgdId).toString();
             }
             if( !r.refNuc.equals("-") ) {
-                r.refNuc = VariantPostProcessing.reverseComplement(r.refNuc).toString();
+                r.refNuc = VariantPostProcessing.reverseComplement(r.refNuc,r.geneRgdId).toString();
             }
         } else {
             throw new Exception("unexpected strand "+r.strand);

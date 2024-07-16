@@ -1,7 +1,7 @@
 . /etc/profile
 APPHOME=/home/rgddata/pipelines/ratStrainLoader
-LOG4J_INFO="-Dlog4j.configuration=file://$APPHOME/properties/log4j.properties"
-DBCONN_INFO="-Dspring.config=$APPHOME/../properties/default_db.xml -Djava.security.egd=file:/dev/../dev/urandom"
+LOG4J_INFO="-Dlog4j.configurationFile=file://$APPHOME/properties/log4j.properties"
+DBCONN_INFO="-Dspring.config=$APPHOME/../properties/default_db2.xml -Djava.security.egd=file:/dev/../dev/urandom"
 JAVA_INFO="$DBCONN_INFO $LOG4J_INFO -jar lib/ratStrainLoader.jar"
 SERVER=`hostname -s | tr '[a-z]' '[A-Z]'`
 EMAIL_LIST=mtutaj@mcw.edu,llamers@mcw.edu
@@ -10,10 +10,10 @@ WORKDIR=$APPHOME/gwasCatalog
 # abort the script if any of stages below will fail
 set -e
 
-STAGE1=1 #generate vcf
-STAGE2=1 #vcf to txt
-STAGE3=1 #load txt
-STAGE4=1 #vpp
+#STAGE1=1 #generate vcf
+#STAGE2=1 #vcf to txt
+#STAGE3=1 #load txt
+#STAGE4=1 #vpp
 
 cd $APPHOME
 #if [[ $STAGE1 -eq 1 ]]; then
@@ -64,16 +64,13 @@ cd $APPHOME
 #  echo "STAGE3: skipped"
 #fi
 
-if [[ $STAGE4 -eq 1 ]]; then
-  echo "STAGE4: run variant post processing on loaded samples"
+echo "Run variant post processing on loaded human samples"
 
-  java $JAVA_INFO \
-    --tool VariantPostProcessing \
-    --mapKey 38 --fastaDir "/data/ref/fasta/hs38" \
-    --verifyIfInRgd \
-    > "$WORKDIR/vpp38.log"
-  wait
-  echo "  STAGE4: ok"
-else
-  echo "STAGE4: skipped"
-fi
+java $JAVA_INFO \
+  --tool VariantPostProcessing \
+  --mapKey 38 --fastaDir "/data/ref/fasta/hs38" \
+  --verifyIfInRgd \
+  > "$WORKDIR/vpp38.log"
+wait
+echo "  Post Processing for Human done"
+
