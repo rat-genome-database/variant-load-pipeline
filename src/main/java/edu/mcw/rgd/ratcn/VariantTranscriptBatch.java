@@ -71,7 +71,7 @@ public class VariantTranscriptBatch {
                 "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND v.map_key=? AND v.chromosome=?) and vt.map_key=?";
 
         vtData = new HashMap();
-        Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
+        Connection conn = DataSourceFactory.getInstance().getDataSource("Carpe").getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1,mapKey);
         ps.setString(2, chr);
@@ -134,7 +134,7 @@ public class VariantTranscriptBatch {
         if( batch.isEmpty() )
             return;
 
-      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getDataSource("Variant"),
+      BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getDataSource("Carpe"),
                 "INSERT INTO VARIANT_TRANSCRIPT \n" +
                 "( VARIANT_RGD_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
                 "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
@@ -184,7 +184,7 @@ public class VariantTranscriptBatch {
                 "VALUES( ?, ?, ?,\n" +
                 " ?, ?, ?, ?,\n" +
                 "?,?,?,?,?,?,?)";
-        Connection conn = DataSourceFactory.getInstance().getDataSource("Variant").getConnection();
+        Connection conn = DataSourceFactory.getInstance().getDataSource("Carpe").getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
         for (VariantTranscript vt : batch){
             try {

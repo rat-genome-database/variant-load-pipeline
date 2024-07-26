@@ -1,4 +1,7 @@
-﻿Jan 24, 2024
+﻿July 26, 2024
+updating "Variant" data source to "Carpe". Both are using same Variant tables
+
+Jan 24, 2024
 reverting postporcessing changes because Logan found the a bug in the HRDP pipeline
 
 Jan 22, 2024
