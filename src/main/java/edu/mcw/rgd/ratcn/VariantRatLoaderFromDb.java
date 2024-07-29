@@ -374,7 +374,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
     }
 
     public DataSource getVariantDataSource() throws Exception{
-        return DataSourceFactory.getInstance().getDataSource("Variant");
+        return DataSourceFactory.getInstance().getDataSource("Carpe");
     }
 
 }
