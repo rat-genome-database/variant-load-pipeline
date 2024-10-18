@@ -20,6 +20,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -386,9 +387,13 @@ public class VariantProcessingBase {
         BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
                 "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)", new int[]{Types.INTEGER},5000);
         sql.compile();
+        Map<Long,Integer> ids = new HashMap<>();
         for (VariantMapData vmd : vmds){
             long rgdId = vmd.getId();
-            sql.update((int)rgdId);
+            if (ids.get(rgdId)==null) {
+                ids.put(rgdId,(int) rgdId);
+                sql.update((int) rgdId);
+            }
         }
         sql.flush();
     }
