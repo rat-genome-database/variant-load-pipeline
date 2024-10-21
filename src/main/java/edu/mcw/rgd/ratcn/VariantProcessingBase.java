@@ -20,7 +20,6 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -387,16 +386,24 @@ public class VariantProcessingBase {
         BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
                 "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)", new int[]{Types.INTEGER},5000);
         sql.compile();
-        Map<Long,Integer> ids = new HashMap<>();
         for (VariantMapData vmd : vmds){
             long rgdId = vmd.getId();
-            if (ids.get(rgdId)==null) {
-                ids.put(rgdId,(int) rgdId);
-                sql.update((int) rgdId);
-            }
+            sql.update((int)rgdId);
         }
         sql.flush();
     }
+
+    public void insertVariantRgdIds2(List<VariantMapData> vmds) throws Exception{
+        BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+                "INSERT INTO VARIANT_RGD_IDS (rgd_id) select ? from dual where not exists(select * from VARIANT_RGD_IDS where rgd_id=?)", new int[]{Types.INTEGER,Types.INTEGER},5000);
+        sql.compile();
+        for (VariantMapData vmd : vmds){
+            long rgdId = vmd.getId();
+            sql.update((int)rgdId,(int)rgdId);
+        }
+        sql.flush();
+    }
+
 
     public void insertVariantRgdId(VariantMapData v)  throws Exception{
 
