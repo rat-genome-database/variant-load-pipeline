@@ -578,7 +578,7 @@ public class VariantLoad3 extends VariantProcessingBase {
             updateVariantSample(sampleDetailForUpdate);
         }
 
-        insertVariantRgdIds(varBatch);
+        insertVariantRgdIds2(varBatch);
         insertVariants(varBatch);
         insertVariantMapData(varBatch);
         insertVariantSample(sampleBatch);
@@ -650,7 +650,7 @@ public class VariantLoad3 extends VariantProcessingBase {
 
 
         }
-        insertVariantRgdIds(varBatch);
+        insertVariantRgdIds2(varBatch);
         insertVariants(varBatch);
         insertVariantMapData(varMapBatch);
         insertVariantSample(sampleBatch);

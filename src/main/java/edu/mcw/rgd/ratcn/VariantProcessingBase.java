@@ -393,6 +393,18 @@ public class VariantProcessingBase {
         sql.flush();
     }
 
+    public void insertVariantRgdIds2(List<VariantMapData> vmds) throws Exception{
+        BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
+                "INSERT INTO VARIANT_RGD_IDS (rgd_id) select ? from dual where not exists(select * from VARIANT_RGD_IDS where rgd_id=?)", new int[]{Types.INTEGER,Types.INTEGER},5000);
+        sql.compile();
+        for (VariantMapData vmd : vmds){
+            long rgdId = vmd.getId();
+            sql.update((int)rgdId,(int)rgdId);
+        }
+        sql.flush();
+    }
+
+
     public void insertVariantRgdId(VariantMapData v)  throws Exception{
 
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
