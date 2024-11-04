@@ -48,8 +48,18 @@ do
         --verifyIfInRgd \
         > "$WORKDIR/vpp631.log"
       wait
-      echo "  EVA species Dog OK"
+      echo "  EVA species Dog 361 OK"
   fi
+
+    if  [[ mKey -eq 634 ]]; then
+        java $JAVA_INFO \
+          --tool VariantPostProcessing \
+          --mapKey 634 --fastaDir "/ref/fasta/ROS_Cfam_1.0" \
+          --verifyIfInRgd \
+          > "$WORKDIR/vpp631.log"
+        wait
+        echo "  EVA species Dog 364 OK"
+    fi
 
   if  [[ mKey -eq 1311 ]]; then
       java $JAVA_INFO \
