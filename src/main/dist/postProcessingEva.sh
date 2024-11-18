@@ -56,7 +56,7 @@ do
           --tool VariantPostProcessing \
           --mapKey 634 --fastaDir "/ref/fasta/ROS_Cfam_1.0" \
           --verifyIfInRgd \
-          > "$WORKDIR/vpp631.log"
+          > "$WORKDIR/vpp634.log"
         wait
         echo "  EVA species Dog 364 OK"
     fi
