@@ -7,7 +7,7 @@ import edu.mcw.rgd.datamodel.Association;
 import edu.mcw.rgd.datamodel.RgdId;
 import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.Utils;
-import edu.mcw.rgd.ratcn.VariantPostProcessing;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 
 import javax.sql.DataSource;
 import java.io.*;
@@ -15,10 +15,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author mtutaj
@@ -58,12 +55,9 @@ public class ClinVar2Vcf {
         System.out.println("---OK---");
     }
 
-    static final int refCount = 8;
-    static final int varCount = 1;
+    static final int REF_COUNT = 8;
+    static final int VAR_COUNT = 1;
 
-    int noStrandVariants;
-    int plusStrandVariants;
-    int minusStrandVariants;
     int linesWritten;
     int linesWithRsId;
     Map<Integer, String> varRgdId2RsId = new HashMap<>();
@@ -80,21 +74,24 @@ public class ClinVar2Vcf {
 
         int linesProcessed = 0;
         int linesWithIssues = 0;
+        int variantsNoPos = 0;
         int hgvsNameUsedAsPreferredName = 0;
 
         Connection conn = getDataSource().getConnection();
-        PreparedStatement ps = conn.prepareStatement(
-            "SELECT v.rgd_id,name,object_type \n" +
-            "FROM clinvar v,genomic_elements ge\n" +
-            "WHERE v.rgd_id=ge.rgd_id \n" +
-            "AND object_type in('single nucleotide variant','deletion','insertion','duplication') " +
-            "order by dbms_random.value");
+        PreparedStatement ps = conn.prepareStatement("""
+            SELECT v.rgd_id,name,object_type,ref_nuc,var_nuc
+            FROM clinvar v,genomic_elements ge
+            WHERE v.rgd_id=ge.rgd_id
+             AND object_type in('single nucleotide variant','deletion','insertion','duplication')
+            order by dbms_random.value
+            """);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             Record r = new Record();
             r.varRgdId = rs.getInt(1);
             // variant must have a position on human assembly
             if( !getVarPos(r, mapKey) ) {
+                variantsNoPos++;
                 continue;
             }
             linesProcessed++;
@@ -102,6 +99,16 @@ public class ClinVar2Vcf {
 
             r.name = rs.getString(2);
             r.type = rs.getString(3);
+            r.refNuc = rs.getString(4);
+            r.varNuc = rs.getString(5);
+
+            if( r.refNuc==null ) {
+                //System.out.println("refNuc problem");
+                linesWithIssues++;
+                continue;
+            }
+
+            /*
             if( !processPreferredName(r, mapKey) ) {
                 String origName = r.name;
                 r.name = loadPrimaryHgvsName(r);
@@ -113,17 +120,7 @@ public class ClinVar2Vcf {
                 else
                     hgvsNameUsedAsPreferredName++;
             }
-
-            if( !getRefAndVarNuc(r) ) {
-                linesWithIssues++;
-                continue;
-            }
-
-            if( r.varStopPos-r.varStartPos+1 != r.refNuc.length() ) {
-                System.out.println("ClinVar position inconsistency "+r.geneSymbol+" varRgdId="+r.varRgdId);
-                linesWithIssues++;
-                continue;
-            }
+            */
 
             if( !qcVarNucAndRefNuc(r) ) {
                 System.out.println("bad varNuc or refNuc "+r.geneSymbol+" varRgdId="+r.varRgdId);
@@ -131,24 +128,80 @@ public class ClinVar2Vcf {
                 continue;
             }
 
-            handleStrandedness(r);
-
             writeVcfLine(r, writer);
         }
         conn.close();
 
         writer.close();
 
+        System.out.println("   sorting in memory ...");
+        sortInMemory(outputFile);
+
         System.out.println("linesProcessed    ="+linesProcessed);
         System.out.println("  linesWritten ="+linesWritten);
         System.out.println("  linesWithIssues ="+linesWithIssues);
+        System.out.println("  variantsSkippedNoPos ="+variantsNoPos);
         System.out.println("  hgvsNameUsedAsPreferredName ="+hgvsNameUsedAsPreferredName);
-        System.out.println("  linesWithPlusStrand ="+plusStrandVariants);
-        System.out.println("  linesWithMinusStrand ="+minusStrandVariants);
-        System.out.println("  linesWithNoStrand ="+noStrandVariants);
         System.out.println("  linesWithRsId ="+linesWithRsId);
     }
 
+    static void sortInMemory( String fname ) throws IOException {
+
+        if( !fname.endsWith(".gz") ) {
+            fname += ".gz";
+        }
+
+        BufferedReader in = Utils.openReader(fname);
+        String line;
+        ArrayList<String> lines = new ArrayList<>();
+        while( (line=in.readLine())!=null ) {
+            lines.add(line);
+        }
+        in.close();
+
+        lines.sort(new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                String[] cols1 = o1.split("[\\t]", -1);
+                String[] cols2 = o2.split("[\\t]", -1);
+                if( cols1.length>=9 && cols2.length>=9 ) {
+                    // compare chromosomes
+                    int r = cols1[0].compareTo(cols2[0]);
+                    if( r!=0 ) {
+                        return r;
+                    }
+                    // compare start positions
+                    int pos1 = Integer.parseInt(cols1[1]);
+                    int pos2 = Integer.parseInt(cols2[1]);
+                    if( pos1!=pos2 ) {
+                        return pos1-pos2;
+                    }
+                    // compare ids
+                    String id1 = cols1[2];
+                    String id2 = cols2[2];
+                    return id1.compareToIgnoreCase(id2);
+                } else {
+                    // '##' lines have absolute priority before the rest of lines
+                    int v1 = o1.startsWith("##") ? 0 : 1;
+                    int v2 = o2.startsWith("##") ? 0 : 1;
+                    if( v1!=v2 ) {
+                        return v1-v2;
+                    }
+                    return o1.compareTo(o2);
+                }
+            }
+        });
+
+        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(fname)));
+
+        for( String l: lines ) {
+            out.write(l);
+            out.write("\n");
+        }
+        out.close();
+    }
+
+    /*
     boolean processPreferredName(Record r, int mapKey) throws Exception {
         r.chr = null;
         r.geneStartPos = 0; // as read from RGD db
@@ -162,9 +215,8 @@ public class ClinVar2Vcf {
         int pos1 = r.name2.indexOf(":c.");
         if( pos1>0 ) {
             r.geneSymbol = r.name2.substring(0, pos1);
-            //r.geneRgdId = getGeneRgdId(r.geneSymbol);
             r.geneRgdId = getGeneRgdId(r.varRgdId);
-            getGenePos(r);
+            getGenePos(r, mapKey);
             extractLocusAndNucChange(r, pos1+3);
         } else {
             // genomic position, like NC_000005.10:g.171328520C>T
@@ -179,19 +231,22 @@ public class ClinVar2Vcf {
         }
         return true;
     }
+    */
 
     boolean qcVarNucAndRefNuc(Record r) {
         // varNuc and refNuc must be composed entirely from characters 'ACGT-'
-        if( r.refNuc==null || r.refNuc.isEmpty() )
+        if( r.refNuc==null || r.refNuc.isEmpty() ) {
             return false;
-        if( r.varNuc==null || r.varNuc.isEmpty() )
+        }
+        if( r.varNuc==null || r.varNuc.isEmpty() ) {
             return false;
+        }
 
         if( !r.refNuc.equals("-") ) {
-            // refnuc must be a combination of ACGT
+            // refnuc must be a combination of ACGTN
             for( int i=0; i<r.refNuc.length(); i++ ) {
                 char c = r.refNuc.charAt(i);
-                if( c!='A' && c!='C' && c!='G' && c!='T' ) {
+                if( c!='A' && c!='C' && c!='G' && c!='T' && c!='N' ) {
                     System.out.println("   invalid refNuc "+r.refNuc);
                     return false;
                 }
@@ -199,10 +254,10 @@ public class ClinVar2Vcf {
         }
 
         if( !r.varNuc.equals("-") ) {
-            // varnuc must be a combination of ACGT
+            // varnuc must be a combination of ACGTN
             for( int i=0; i<r.varNuc.length(); i++ ) {
                 char c = r.varNuc.charAt(i);
-                if( c!='A' && c!='C' && c!='G' && c!='T' ) {
+                if( c!='A' && c!='C' && c!='G' && c!='T' && c!='N' ) {
                     System.out.println("   invalid varNuc "+r.varNuc);
                     return false;
                 }
@@ -210,29 +265,6 @@ public class ClinVar2Vcf {
         }
 
         return true;
-    }
-
-    void handleStrandedness(Record r) throws Exception {
-        if( r.strand==null ) {
-            if( r.ncAccId!=null && !r.ncAccId.startsWith("NC") && !r.ncAccId.startsWith("NG") ) {
-                System.out.println("NO STRAND "+r.name+" varRgdId="+r.varRgdId);
-            }
-            noStrandVariants++;
-        } else if( r.strand.equals("+")) {
-            plusStrandVariants++;
-        } else if( r.strand.equals("-") ) {
-            minusStrandVariants++;
-
-            // convert refNuc and varNuc to negative strand
-            if( !r.varNuc.equals("-") ) {
-                r.varNuc = VariantPostProcessing.reverseComplement(r.varNuc,r.geneRgdId).toString();
-            }
-            if( !r.refNuc.equals("-") ) {
-                r.refNuc = VariantPostProcessing.reverseComplement(r.refNuc,r.geneRgdId).toString();
-            }
-        } else {
-            throw new Exception("unexpected strand "+r.strand);
-        }
     }
 
     void writeVcfLine(Record r, BufferedWriter writer) throws IOException {
@@ -270,85 +302,14 @@ public class ClinVar2Vcf {
         // FORMAT
         writer.write("\tGT;AD;DP");
 
-        writer.write("\t0/1:"+refCount+","+varCount+":"+(refCount+varCount));
+        writer.write("\t0/1:"+ REF_COUNT +","+ VAR_COUNT +":"+(REF_COUNT + VAR_COUNT));
 
         writer.write("\n");
 
         linesWritten++;
     }
 
-    boolean getRefAndVarNuc(Record r) {
-        if( r.type.equals("single nucleotide variant") ) {
-            // find '>'
-            int pos = r.nucChange.indexOf('>');
-            if( pos>0 ) {
-                r.refNuc = r.nucChange.substring(0, pos);
-                r.varNuc = r.nucChange.substring(pos+1);
-                return true;
-            } else {
-                pos = r.nucChange.indexOf('=');
-                if( pos>0 ) {
-                    r.refNuc = r.nucChange.substring(0, pos);
-                    r.varNuc = r.refNuc;
-                    return true;
-                } else {
-                    System.out.println(" unsupported snv: "+r.name+" varRgdId="+r.varRgdId);
-                    return false;
-                }
-            }
-        }
-
-        if( r.type.equals("deletion") ) {
-                // fe 'delCT'
-            if( r.nucChange.startsWith("del") ) {
-                r.refNuc = r.nucChange.substring(3);
-                r.varNuc = "-";
-                return true;
-            } else {
-                System.out.println(" unsupported del: "+r.name+" varRgdId="+r.varRgdId);
-                return false;
-            }
-        }
-
-        if( r.type.equals("duplication") ) {
-                // fe 'dupAAACCGCCCC'
-            if( r.nucChange.startsWith("dup") ) {
-                r.refNuc = r.nucChange.substring(3);
-                r.varNuc = r.refNuc+r.refNuc;
-                return true;
-            }
-            else if( r.nucChange.startsWith("ins") ) {
-                r.refNuc = r.nucChange.substring(3);
-                r.varNuc = r.refNuc+r.refNuc;
-                r.varStopPos--; // customarily (HGVS names) for insertion, positions for start and end nucleotides are provided
-                // fe c.51_52insT is a single nucl insertion between 51st and 52nd nucleotides of CDS
-                // we decrease stop pos to make our QC code work
-                return true;
-            } else {
-                System.out.println(" unsupported dup: "+r.name+" varRgdId="+r.varRgdId);
-                return false;
-            }
-        }
-
-        if( r.type.equals("insertion") ) {
-                // fe 'insT'
-            if( r.nucChange.startsWith("ins") ) {
-                r.refNuc = "-";
-                r.varNuc = r.nucChange.substring(3);
-                r.varStopPos--; // customarily (HGVS names) for insertion, positions for start and end nucleotides are provided
-                // fe c.51_52insT is a single nucl insertion between 51st and 52nd nucleotides of CDS
-                // we decrease stop pos to make our QC code work
-                return true;
-            } else {
-                System.out.println(" unsupported ins: "+r.name+" varRgdId="+r.varRgdId);
-                return false;
-            }
-        }
-
-        System.out.println("unsupported var type");
-        return true;
-    }
-
+    /*
     void extractLocusAndNucChange(Record r, int pos) {
 
         // parse name2, such as '749C>T' into locus='749' and nucChange='C>T'
@@ -401,7 +362,7 @@ public class ClinVar2Vcf {
         return assocs.get(0).getDetailRgdId();
     }
 
-    void getGenePos(Record r) throws SQLException {
+    void getGenePos(Record r, int mapKey) throws SQLException {
 
         r.chr = null;
 
@@ -409,7 +370,7 @@ public class ClinVar2Vcf {
         PreparedStatement ps = conn.prepareStatement(
                 "SELECT md.start_pos, md.stop_pos,md.chromosome,md.strand FROM maps_data md WHERE md.rgd_id=? AND map_key=?");
         ps.setInt(1, r.geneRgdId);
-        ps.setInt(2, 17);
+        ps.setInt(2, mapKey);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             if( r.chr!=null ) {
@@ -441,7 +402,7 @@ public class ClinVar2Vcf {
         PreparedStatement ps = conn.prepareStatement(
                 "SELECT md.start_pos, md.stop_pos,md.chromosome,md.strand FROM maps_data md,transcripts WHERE acc_id=? AND map_key=? AND transcript_rgd_id=rgd_id");
         ps.setString(1, accId);
-        ps.setInt(2, 17);
+        ps.setInt(2, mapKey);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             if( r.chr!=null ) {
@@ -454,6 +415,7 @@ public class ClinVar2Vcf {
         }
         conn.close();
     }
+    */
 
     boolean getVarPos(Record r, int mapKey) throws SQLException {
 
@@ -481,6 +443,7 @@ public class ClinVar2Vcf {
         return r.varChr!=null;
     }
 
+    /*
     String loadPrimaryHgvsName(Record r) throws Exception {
 
         r.primaryHgvsName = null;
@@ -507,6 +470,7 @@ public class ClinVar2Vcf {
 
         return r.primaryHgvsName;
     }
+    */
 
     DataSource getDataSource() {
         return (DataSource) (XmlBeanFactoryManager.getInstance().getBean("DataSource"));
