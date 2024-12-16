@@ -1,4 +1,7 @@
-﻿July 26, 2024
+﻿Dec 16, 2024
+  rewrote ClinVar2Vcf
+
+July 26, 2024
 updating "Variant" data source to "Carpe". Both are using same Variant tables
 
 Jan 24, 2024
