@@ -1,4 +1,7 @@
-﻿Dec 16, 2024
+﻿Feb 07, 2025
+  ClinVar2Vcf: added microsatellite to list of variant types processed by the pipeline
+
+Dec 16, 2024
   rewrote ClinVar2Vcf
 
 July 26, 2024

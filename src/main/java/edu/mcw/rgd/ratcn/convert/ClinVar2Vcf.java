@@ -1,9 +1,7 @@
 package edu.mcw.rgd.ratcn.convert;
 
-import edu.mcw.rgd.dao.impl.AssociationDAO;
 import edu.mcw.rgd.dao.impl.XdbIdDAO;
 import edu.mcw.rgd.dao.spring.XmlBeanFactoryManager;
-import edu.mcw.rgd.datamodel.Association;
 import edu.mcw.rgd.datamodel.RgdId;
 import edu.mcw.rgd.datamodel.XdbId;
 import edu.mcw.rgd.process.Utils;
@@ -82,7 +80,7 @@ public class ClinVar2Vcf {
             SELECT v.rgd_id,name,object_type,ref_nuc,var_nuc
             FROM clinvar v,genomic_elements ge
             WHERE v.rgd_id=ge.rgd_id
-             AND object_type in('single nucleotide variant','deletion','insertion','duplication')
+             AND object_type in('single nucleotide variant','deletion','insertion','duplication','microsatellite')
             order by dbms_random.value
             """);
         ResultSet rs = ps.executeQuery();
@@ -107,20 +105,6 @@ public class ClinVar2Vcf {
                 linesWithIssues++;
                 continue;
             }
-
-            /*
-            if( !processPreferredName(r, mapKey) ) {
-                String origName = r.name;
-                r.name = loadPrimaryHgvsName(r);
-                if( !processPreferredName(r, mapKey) ) {
-                    System.out.println("unsupported format of preferred name ["+origName+"], hgvs-name ["+r.name+"], rgd_id="+r.varRgdId);
-                    linesWithIssues++;
-                    continue;
-                }
-                else
-                    hgvsNameUsedAsPreferredName++;
-            }
-            */
 
             if( !qcVarNucAndRefNuc(r) ) {
                 System.out.println("bad varNuc or refNuc "+r.geneSymbol+" varRgdId="+r.varRgdId);
@@ -201,38 +185,6 @@ public class ClinVar2Vcf {
         out.close();
     }
 
-    /*
-    boolean processPreferredName(Record r, int mapKey) throws Exception {
-        r.chr = null;
-        r.geneStartPos = 0; // as read from RGD db
-
-        // get rid of parentheses (and extract protein change)
-        r.name2 = extractProteinChange(r);
-        if( r.name2==null )
-            return false;
-
-        // extract gene name
-        int pos1 = r.name2.indexOf(":c.");
-        if( pos1>0 ) {
-            r.geneSymbol = r.name2.substring(0, pos1);
-            r.geneRgdId = getGeneRgdId(r.varRgdId);
-            getGenePos(r, mapKey);
-            extractLocusAndNucChange(r, pos1+3);
-        } else {
-            // genomic position, like NC_000005.10:g.171328520C>T
-            pos1 = r.name2.indexOf(":g.");
-            if( pos1>0 ) {
-                r.ncAccId = r.name2.substring(0, pos1);
-                getTrPos(r, mapKey);
-                extractLocusAndNucChange(r, pos1+3);
-            } else {
-                return false;
-            }
-        }
-        return true;
-    }
-    */
-
     boolean qcVarNucAndRefNuc(Record r) {
         // varNuc and refNuc must be composed entirely from characters 'ACGT-'
         if( r.refNuc==null || r.refNuc.isEmpty() ) {
@@ -309,114 +261,6 @@ public class ClinVar2Vcf {
         linesWritten++;
     }
 
-    /*
-    void extractLocusAndNucChange(Record r, int pos) {
-
-        // parse name2, such as '749C>T' into locus='749' and nucChange='C>T'
-        //
-        // stop at 1st non-digit character
-        int i;
-        for( i=pos; i<r.name2.length(); i++ ) {
-            char c = r.name2.charAt(i);
-            if( !Character.isDigit(c)  &&  c!='+'  &&  c!='-'  &&  c!='_'  &&  c!='*' )
-                break;
-        }
-        r.locus = r.name2.substring(pos, i);
-        r.nucChange = r.name2.substring(i);
-
-        if( r.ncAccId!=null ) {
-            // absolute genomic pos given
-            //r.pos = r.varStartPos;
-        } else {
-
-        }
-    }
-
-    String extractProteinChange(Record r) {
-        if( r.name==null )
-            return null;
-
-        int pos1 = r.name.lastIndexOf("(p.");
-        int pos2 = r.name.lastIndexOf(")");
-        if( pos1>0 && pos1<pos2 ) {
-            r.proteinChange = r.name.substring(pos1+1, pos2);
-            return r.name.substring(0, pos1).trim();
-        }
-        else {
-            return r.name;
-        }
-    }
-
-    int getGeneRgdId(int variantRgdId) throws Exception {
-
-        AssociationDAO associationDAO = new AssociationDAO();
-        List<Association> assocs = associationDAO.getAssociationsForMasterRgdId(variantRgdId, "variant_to_gene");
-        if( assocs.isEmpty() ) {
-            System.out.println("No gene assocs for VAR_RGD_ID="+variantRgdId);
-            return 0;
-        }
-        if( assocs.size()>1 ) {
-            System.out.println("Multiple genes for VAR_RGD_ID="+variantRgdId);
-            return 0;
-        }
-        return assocs.get(0).getDetailRgdId();
-    }
-
-    void getGenePos(Record r, int mapKey) throws SQLException {
-
-        r.chr = null;
-
-        Connection conn = getDataSource().getConnection();
-        PreparedStatement ps = conn.prepareStatement(
-                "SELECT md.start_pos, md.stop_pos,md.chromosome,md.strand FROM maps_data md WHERE md.rgd_id=? AND map_key=?");
-        ps.setInt(1, r.geneRgdId);
-        ps.setInt(2, mapKey);
-        ResultSet rs = ps.executeQuery();
-        while( rs.next() ) {
-            if( r.chr!=null ) {
-                System.out.println("multiple positions for "+r.geneSymbol);
-            } else {
-                r.geneStartPos = rs.getInt(1);
-                r.chr = rs.getString(3);
-                r.strand = rs.getString(4);
-            }
-        }
-        conn.close();
-    }
-
-    // get position of transcript
-    void getTrPos(Record r, int mapKey) throws Exception {
-        if( r.ncAccId==null || r.ncAccId.startsWith("NC_") || r.ncAccId.startsWith("NG_") ) {
-            return;
-        }
-
-        r.chr = null;
-
-        // truncate dot part of transcript acc id
-        String accId = r.ncAccId;
-        int dotPos = accId.indexOf(".");
-        if( dotPos>0 )
-            accId = accId.substring(0, dotPos);
-
-        Connection conn = getDataSource().getConnection();
-        PreparedStatement ps = conn.prepareStatement(
-                "SELECT md.start_pos, md.stop_pos,md.chromosome,md.strand FROM maps_data md,transcripts WHERE acc_id=? AND map_key=? AND transcript_rgd_id=rgd_id");
-        ps.setString(1, accId);
-        ps.setInt(2, mapKey);
-        ResultSet rs = ps.executeQuery();
-        while( rs.next() ) {
-            if( r.chr!=null ) {
-                System.out.println("multiple positions for "+accId);
-            } else {
-                r.geneStartPos = rs.getInt(1);
-                r.chr = rs.getString(3);
-                r.strand = rs.getString(4);
-            }
-        }
-        conn.close();
-    }
-    */
-
     boolean getVarPos(Record r, int mapKey) throws SQLException {
 
         r.varChr = null;
@@ -442,35 +286,6 @@ public class ClinVar2Vcf {
 
         return r.varChr!=null;
     }
-
-    /*
-    String loadPrimaryHgvsName(Record r) throws Exception {
-
-        r.primaryHgvsName = null;
-
-        Connection conn = getDataSource().getConnection();
-        PreparedStatement ps = conn.prepareStatement(
-            "SELECT hgvs_name,hgvs_name_type FROM hgvs_names WHERE rgd_id=? ORDER BY "+
-            "DECODE(hgvs_name_type,'genomic_refseqgene',1,'coding_refseq',2,'genomic_toplevel',3,'coding',4,5)");
-        ps.setInt(1, r.varRgdId);
-        ResultSet rs = ps.executeQuery();
-        while( rs.next() ) {
-            String hgvsName = rs.getString(1);
-            String hgvsType = rs.getString(2);
-            if( r.primaryHgvsName==null )
-                r.primaryHgvsName = hgvsName;
-            if( hgvsType.startsWith("protein") && !r.primaryHgvsName.contains("(p.") ) {
-                // extract protein change from hgvs name
-                int pos = hgvsName.indexOf("p.");
-                if( pos>=0 )
-                    r.primaryHgvsName += " ("+hgvsName.substring(pos)+")";
-            }
-        }
-        conn.close();
-
-        return r.primaryHgvsName;
-    }
-    */
 
     DataSource getDataSource() {
         return (DataSource) (XmlBeanFactoryManager.getInstance().getBean("DataSource"));
@@ -505,7 +320,6 @@ public class ClinVar2Vcf {
 
         String chr = null; // chromosome
         int geneStartPos = 0; // as read from RGD db
-        String primaryHgvsName; // best-match from hgvs names
 
         String varChr = null; // chromosome for variant
         int varStartPos = 0; // variant start pos
