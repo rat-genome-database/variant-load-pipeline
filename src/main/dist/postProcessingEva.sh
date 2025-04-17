@@ -11,6 +11,16 @@ cd $APPHOME
 
 for mKey in "$@"
 do
+    if  [[ mKey -eq 380 ]]; then
+        java $JAVA_INFO \
+          --tool VariantPostProcessing \
+          --mapKey 380 --fastaDir "/ref/fasta/GRCr8/" \
+          --verifyIfInRgd \
+          > "$WORKDIR/vpp380.log"
+        wait
+        echo "  EVA species Rat 380 OK"
+    fi
+
   if  [[ mKey -eq 372 ]]; then
       java $JAVA_INFO \
         --tool VariantPostProcessing \
