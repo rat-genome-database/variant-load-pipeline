@@ -1,4 +1,7 @@
-﻿Feb 07, 2025
+﻿May 5, 2025
+  updating postprocessing to not have rn6 as fasta directory in bean
+
+Feb 07, 2025
   ClinVar2Vcf: added microsatellite to list of variant types processed by the pipeline
 
 Dec 16, 2024

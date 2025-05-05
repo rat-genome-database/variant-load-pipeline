@@ -15,7 +15,7 @@ do
         java $JAVA_INFO \
           --tool VariantPostProcessing \
           --mapKey 380 --fastaDir "/ref/fasta/GRCr8/" \
-#          --verifyIfInRgd \
+          --verifyIfInRgd \
           > "$WORKDIR/vpp380.log"
         wait
         echo "  EVA species Rat 380 OK"

@@ -132,7 +132,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         System.out.println("process chromosomes for mapKey "+mapKey );
         //ChrFastaFile fastaFile = new ChrFastaFile();
         FastaParser fastaParser = new FastaParser();
-        fastaParser.setMapKey(mapKey, this.getFastaDir());
+        fastaParser.setMapKey(mapKey);
         List<String> chromosomes = getChromosomes(mapKey);
         Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
         for( String chr: chromosomes ) {

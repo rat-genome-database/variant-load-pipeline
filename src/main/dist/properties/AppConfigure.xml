@@ -8,7 +8,7 @@
         <property name="fastaDir" value="/data/RatCarpeNovoData/fasta/rat34" />
         <property name="fastaDir" value="/data/RatCarpeNovoData/fasta/rat5" />
         -->
-        <property name="fastaDir" value="/data/ref/fasta/rn6" />
+        <property name="fastaDir" value="/ref/fasta/" />
         <property name="logDir" value="logs/" />
 
 	</bean>
