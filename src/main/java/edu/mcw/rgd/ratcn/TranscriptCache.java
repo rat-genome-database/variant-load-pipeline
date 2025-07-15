@@ -26,8 +26,8 @@ public class TranscriptCache {
 
         entries.clear();
 
-        String sql = "SELECT transcript_rgd_id,gene_rgd_id,is_non_coding_ind FROM transcripts WHERE \n" +
-                    "EXISTS(SELECT 1 FROM maps_data md WHERE md.rgd_id=transcript_rgd_id AND md.map_key=? AND md.chromosome = ?)";
+        String sql = "SELECT transcript_rgd_id,gene_rgd_id,is_non_coding_ind FROM transcripts WHERE " +
+                    "EXISTS(SELECT 1 FROM maps_data md, rgd_ids r WHERE md.rgd_id=transcript_rgd_id and r.rgd_id=transcript_rgd_id and r.OBJECT_STATUS = 'ACTIVE' AND md.map_key=? AND md.chromosome = ?)";
         Connection conn = ds.getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
 
@@ -35,8 +35,8 @@ public class TranscriptCache {
         ps.setString(2, chromosome);
         ResultSet rs = ps.executeQuery();
 
-        String sql1 = "SELECT t.transcript_rgd_id,count(*) FROM transcripts t inner join TRANSCRIPT_FEATURES tf on t.TRANSCRIPT_RGD_ID = tf.TRANSCRIPT_RGD_ID \n" +
-                      "inner join rgd_ids r on  tf.FEATURE_RGD_ID = r.rgd_id AND r.OBJECT_KEY=15 \n" +
+        String sql1 = "SELECT t.transcript_rgd_id,count(*) FROM transcripts t inner join TRANSCRIPT_FEATURES tf on t.TRANSCRIPT_RGD_ID = tf.TRANSCRIPT_RGD_ID " +
+                      "inner join rgd_ids r on  tf.FEATURE_RGD_ID = r.rgd_id AND r.OBJECT_KEY=15 AND r.OBJECT_STATUS = 'ACTIVE' " +
                       "inner join maps_data md on md.MAP_KEY=? AND md.CHROMOSOME=? AND md.rgd_id=tf.FEATURE_RGD_ID group by t.transcript_rgd_id ";
 
         PreparedStatement ps1 = conn.prepareStatement(sql1);
