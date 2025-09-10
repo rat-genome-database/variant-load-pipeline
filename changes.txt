@@ -1,4 +1,7 @@
-﻿May 5, 2025
+﻿Sep 10, 2025
+  postprocessing: allows '.' processing in reverseComplement
+
+May 5, 2025
   updating postprocessing to not have rn6 as fasta directory in bean
 
 Feb 07, 2025
@@ -11,7 +14,7 @@ July 26, 2024
 updating "Variant" data source to "Carpe". Both are using same Variant tables
 
 Jan 24, 2024
-reverting postporcessing changes because Logan found the a bug in the HRDP pipeline
+reverting postprocessing changes because Logan found the a bug in the HRDP pipeline
 
 Jan 22, 2024
 VariantPostProcessing: updated for exons that begin in/out-side of a gene per RGDD-2076
