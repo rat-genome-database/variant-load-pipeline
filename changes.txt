@@ -1,4 +1,8 @@
-﻿Sep 10, 2025
+﻿Dec 03, 2025
+  postprocessing: logging of debug output is now configurable
+                  it is turned off by default
+
+Sep 10, 2025
   postprocessing: allows '.' processing in reverseComplement
 
 May 5, 2025

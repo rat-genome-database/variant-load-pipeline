@@ -2,7 +2,7 @@
 <beans>
 
 	<bean id="variantPostProcessing" class="edu.mcw.rgd.ratcn.VariantPostProcessing">
-        <property name="version" value="--RGD VariantPostProcessing-- ver. March 7, 2022 --" />
+        <property name="version" value="--RGD VariantPostProcessing-- build Dec 03, 2025 --" />
         <property name="logFile" value="varpp_###ASSEMBLY###.log" />
         <!--
         <property name="fastaDir" value="/data/RatCarpeNovoData/fasta/rat34" />
@@ -10,6 +10,7 @@
         -->
         <property name="fastaDir" value="/ref/fasta/" />
         <property name="logDir" value="logs/" />
+        <property name="dbgLogging" value="false" />
 
 	</bean>
 

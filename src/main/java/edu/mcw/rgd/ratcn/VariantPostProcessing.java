@@ -31,6 +31,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String logFile;
     private String fastaDir;
     private String logDir;
+    private boolean dbgLogging;
     private boolean verifyIfInRgd = false;
     int mapKey = 0;
     private GeneCache geneCache = new GeneCache();
@@ -202,12 +203,16 @@ public class VariantPostProcessing extends VariantProcessingBase {
             if(variantNuc!=null && variantNuc.contains(","))
                 continue;
 
-            getLogWriter().write("------------------- Start Processing of Variant ---------\n");
-            getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write("------------------- Start Processing of Variant ---------\n");
+                getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
+            }
 
             // Get all GENES for this variant
             for( int geneRgdId: geneCache.getGeneRgdIds(varStart) ) {
-                getLogWriter().write("	--------------- Start Processing for gene rgdId " + geneRgdId + " --------\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("	--------------- Start Processing for gene rgdId " + geneRgdId + " --------\n");
+                }
                 initGene(geneRgdId);
 
                 // Iterate over all transcripts for this gene
@@ -218,15 +223,17 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     for (TranscriptCache.TranscriptCacheEntry entry : entries) {
                         //    int transcriptRgdId = rgdRow.getInt(1);
 
-                        getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
-
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("	------------- Start Processing of Transcript " + entry.transcriptRgdId + " ---\n");
+                        }
 
                         // Get count of exons as we need to ignore the last position of the last exon
                         int totalExonCount = getExonCount(entry.transcriptRgdId, chr, mapKey);
-                        getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("				totalExonCount : " + totalExonCount + "\n");
+                        }
 
                         TranscriptFlags tflags = new TranscriptFlags();
-
 
                         // See if we have a Coding region
                         //   String isNonCodingRegion = rgdRow.getString(2);
@@ -242,7 +249,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                                 tflags.transcriptLocation = "INTRON";
                             }
                         }
-                        getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
+                        }
 
                         // If not in Exome log and continue
                         boolean doInsert = false;
@@ -299,7 +308,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 int transStart = transRow.startPos;
                 int transStop = transRow.stopPos;
                 String objectName = transRow.objectName;
-                getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("		Found: " + objectName + " " + transStart + " - " + transStop + " (" + tflags.strand + ") \n");
+                }
 
                 if (objectName.equals("3UTRS")) {
                     tflags.threeUtr = new Feature(transStart, transStop, objectName);
@@ -315,7 +326,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 if (tflags.exomsArray.size() != 1) {
                     // If the transcript start falls within 10 bp of the variant
                     if ((transStart - 10 <= varStart) && (transStart + 10 >= varStop)) {
-                        getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " , variantStart: " + varStart + ",  transStart: ${transStart} , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " , variantStart: " + varStart + ",  transStart: ${transStart} , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                        }
                         tflags.nearSpliceSite = "T";
                     }
                 }
@@ -324,7 +337,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 if (tflags.exomsArray.size() != totalExonCount) {
                     // If the transcript stop falls within 10 bp of the variant stop
                     if ((transStop - 10 <= varStart) && (transStop + 10 >= varStop)) {
-                        getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " ,variantStart: " + varStart + " ,  transStart: " + transStart + " , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("nearSpliceSite found for : transcriptRGDId : " + transcriptRgdId + " ,variantStart: " + varStart + " ,  transStart: " + transStart + " , threeUtr.start: ${threeUtr?.start} threeUtr.stop: ${threeUtr?.stop} fiveUtr.start : ${fiveUtr?.start}  fiveUtr.stop : ${fiveUtr?.stop}\n");
+                        }
                         tflags.nearSpliceSite = "T";
                     }
                 }
@@ -338,7 +353,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
             // "3UTR,EXON" or "3UTR,INTRON" or "EXON" or "INTRON" or "5UTR,EXON" or "5UTR,INTRON"
 
             if( transStart <= varStart && transStop >= varStop ) {
-                getLogWriter().write("	Object found " + objectName + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("	Object found " + objectName + "\n");
+                }
 
                 if ((objectName.equals("5UTRS")) || (objectName.equals("3UTRS"))) {
                     if (tflags.transcriptLocation != null) {
@@ -356,7 +373,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     }
                     tflags.inExon = true;
                 }
-                getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
+                }
             }
         }
         }
@@ -371,7 +390,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                               int varStart, int varStop, long variantId, String refNuc, String varNuc, int mapKey,String chr) throws Exception {
 
         if (tflags.strand != null && tflags.strand.equals("-") ) {
-            getLogWriter().write("Switching UTrs as we're dealing with - strand ... \n");
+            if( isDbgLogging() ) {
+                getLogWriter().write("Switching UTrs as we're dealing with - strand ... \n");
+            }
             Feature temp = tflags.threeUtr;
             tflags.threeUtr = tflags.fiveUtr;
             tflags.fiveUtr = temp;
@@ -380,22 +401,29 @@ public class VariantPostProcessing extends VariantProcessingBase {
         // OK we' have a variant in an Exom  for only plus stranded genes !!!!!!
         handleUTRs(tflags.exomsArray, tflags.threeUtr, tflags.fiveUtr);
 
-        getLogWriter().write("		        Variant : " + varStart + " " + varStop + "\n");
-        getLogWriter().write(" 		Processed exons :\n");
+        if( isDbgLogging() ) {
+            getLogWriter().write("		        Variant : " + varStart + " " + varStop + "\n");
+            getLogWriter().write(" 		Processed exons :\n");
+        }
         int fcount = 1;
         int variantRelPos = 0; // relative position of the variant in the entire combined exome sequence
         boolean foundInExon = false;
         // Determine the relative position the variant occurs at
         for (Feature feature: tflags.exomsArray) {
-            getLogWriter().write(" 		EXON start :" + feature.start + " stop " + feature.stop + "\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write(" 		EXON start :" + feature.start + " stop " + feature.stop + "\n");
+            }
             // See if feature was skipped entirely by removal from 5PrimteUTR
             if (feature.start != -1) {
                 if (feature.start <= varStart && feature.stop > varStop) {
-                    getLogWriter().write(" 		DNA :" + getDnaChunk(fastaFile, feature.start, feature.stop) + "\n");
+                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
                     foundInExon = true;
-                    getLogWriter().write("Variant found in feature # " + fcount + "\n");
                     variantRelPos += (varStart - (feature.start - 1)); // add length of partial feature
-                    getLogWriter().write("Relative variant position found as " + variantRelPos + "\n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write(" 		DNA :" + dnaChunk + "\n");
+                        getLogWriter().write("Variant found in feature # " + fcount + "\n");
+                        getLogWriter().write("Relative variant position found as " + variantRelPos + "\n");
+                    }
                     break;
                 } else {
                     variantRelPos += (feature.stop - feature.start) + 1;  // add length of entire feature
@@ -403,9 +431,13 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
             fcount++;
         }
-        getLogWriter().write("			variantRelPos = " + variantRelPos + "\n");
+        if( isDbgLogging() ) {
+            getLogWriter().write("			variantRelPos = " + variantRelPos + "\n");
+        }
         if (foundInExon) {
-            getLogWriter().write("************************* Variant in Exome region ************************\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write("************************* Variant in Exome region ************************\n");
+            }
             StringBuffer refDna = new StringBuffer();
             StringBuffer varDna = new StringBuffer();
 
@@ -415,7 +447,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 if (feature.start != -1) {
 //                    String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
                     String dnaChunk = getProperChunk(fastaFile, transcriptRgdId, chr, feature.start, feature.stop, mapKey);
-                    getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write("Building dna adding : (" + feature.start + ", " + feature.stop + ") " + dnaChunk + " length : " + dnaChunk.length() + "\n");
+                    }
                     refDna.append(dnaChunk);
                     varDna.append(dnaChunk);
                 }
@@ -446,63 +480,81 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             refDna = new StringBuffer(refDna.toString().toLowerCase());
 
-            getLogWriter().write(" RefDna length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
-            getLogWriter().write(" ENTIRE reference DNA :\n" + refDna.toString() + "\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write(" RefDna length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
+                getLogWriter().write(" ENTIRE reference DNA :\n" + refDna.toString() + "\n");
+            }
 
 
             if (tflags.strand.equals("-")) {
-                getLogWriter().write("		Negative Strand found reverseCompliment dna \n");
-                getLogWriter().write("		variantRelPos before neg stand switch is : " + variantRelPos + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("		Negative Strand found reverseCompliment dna \n");
+                    getLogWriter().write("		variantRelPos before neg stand switch is : " + variantRelPos + "\n");
+                }
                 variantRelPos = refDna.length() - variantRelPos + 1;
-                getLogWriter().write("		variantRelPos set now set to : " + variantRelPos + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("		variantRelPos set now set to : " + variantRelPos + "\n");
+                }
                 // Dealing with "-" strand , reverse the DNA
                 refDna = reverseComplement(refDna, transcriptRgdId);
                 varDna = reverseComplement(varDna, transcriptRgdId);
             } else {
-                getLogWriter().write("		Positive Strand found " + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("		Positive Strand found " + "\n");
+                }
             }
 
             // Check for rna evenly divisable by 3 or log as error
             String transcriptErrorFound = "F";
             if (refDna.length() % 3 != 0) {
                 writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+((new Date()).toString())+":TRIPLETERROR\n", mapKey);
-                getLogWriter().write("************************* Warning in transcript rna length : see error_rga.txt file  ************************\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("************************* Warning in transcript rna length : see error_rga.txt file  ************************\n");
+                }
                 // Use this later to update VARIANT+TRANSCRIPT table with error
                 transcriptErrorFound = "T";
             }
             // make it divisible by 3
             if (refDna.length() % 3 != 0) {
                 refDna.replace(0, refDna.length(), refDna.substring(0, refDna.length() - (refDna.length() % 3)));
-                getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
+                }
             }
             if (varDna.length() % 3 != 0) {
                 varDna.replace(0, varDna.length(), varDna.substring(0, varDna.length() - (varDna.length() % 3)));
-                getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
+                }
             }
 
             // Now test to see if the variant was in an area eliminated by the divisable by 3 truncation process
             if ( variantRelPos < 1 ) {
                 writeError(variantId+":"+transcriptRgdId+":"+refDna.length()+":"+new Date().toString()+":SKIPPED\n", mapKey);
-                getLogWriter().write("************************* Error in transcript variant in trimmed area : skipping see error_rga.txt file  ************************\n");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("************************* Error in transcript variant in trimmed area : skipping see error_rga.txt file  ************************\n");
+                }
                 return false; // return false to insert new row into VARIANT_TRANSCRIPT: at least variant location will be available
 
             }
 
+            if( isDbgLogging() ) {
+                getLogWriter().write("ENTIRE Ref DNA :\n" + refDna.toString() + "\n");
 
-            getLogWriter().write("ENTIRE Ref DNA :\n" + refDna.toString() + "\n");
+                // replace variant , ok as the variant is always on the plus strand
+                getLogWriter().write("variant rel pos = " + variantRelPos + "\n");
 
-            // replace variant , ok as the variant is always on the plus strand
-            getLogWriter().write("variant rel pos = " + variantRelPos + "\n");
-
-            getLogWriter().write(" ENTIRE variant DNA ( change in upper case ):\n" + varDna.toString() + "\n");
-
+                getLogWriter().write(" ENTIRE variant DNA ( change in upper case ):\n" + varDna.toString() + "\n");
+            }
 
             return handleTranslatedProtein(refDna, varDna, variantRelPos, variantId,
                     transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound,chr);
         } else {
             //variant lies within an exon but the part of the exon where it lies is not protein coding
             // so the variant lies within an exon that is part of a UTR
-            getLogWriter().write("************************* Variant in Non-protein coding exon region ************************\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write("************************* Variant in Non-protein coding exon region ************************\n");
+            }
             insertVariantTranscript(variantId, transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         }
@@ -514,20 +566,26 @@ public class VariantPostProcessing extends VariantProcessingBase {
         String rnaRefTranslated = translate(refDna);
         String rnaVarTranslated = translate(varDna);
 
-        getLogWriter().write("RNA REF  \n" + rnaRefTranslated + "\n");
-        getLogWriter().write("RNA VAR  \n" + rnaVarTranslated + "\n");
-        getLogWriter().write("variantRelPos = " + variantRelPos + "\n");
+        if( isDbgLogging() ) {
+            getLogWriter().write("RNA REF  \n" + rnaRefTranslated + "\n");
+            getLogWriter().write("RNA VAR  \n" + rnaVarTranslated + "\n");
+            getLogWriter().write("variantRelPos = " + variantRelPos + "\n");
+        }
 
         // Determine AA Symbol
         int pos = 1 + (variantRelPos - 1) / 3;
-        getLogWriter().write("Position were looking for: " + pos + " rnaRefTranslate.length : " + rnaRefTranslated.length() + "\n");
+        if( isDbgLogging() ) {
+            getLogWriter().write("Position were looking for: " + pos + " rnaRefTranslate.length : " + rnaRefTranslated.length() + "\n");
+        }
 
         // Check if the variant still falls in the transcript
         if (pos>0 && pos <= rnaRefTranslated.length() && pos <= rnaVarTranslated.length()) {
             String LRef = rnaRefTranslated.substring(pos-1, pos);
             String LVar = rnaVarTranslated.substring(pos-1, pos);
 
-            getLogWriter().write("Calculated  Ref AA = " + LRef + " Var AA = " + LVar + "\n");
+            if( isDbgLogging() ) {
+                getLogWriter().write("Calculated  Ref AA = " + LRef + " Var AA = " + LVar + "\n");
+            }
             String synStatus = LRef.equals(LVar) ? "synonymous" : "nonsynonymous";
             if( LRef.equals("X") || LVar.equals("X") ) {
                 synStatus = "unassignable";
@@ -545,7 +603,9 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         } else {
-            getLogWriter().write("Variant skipped because it is no longer in the truncated transcript.");
+            if( isDbgLogging() ) {
+                getLogWriter().write("Variant skipped because it is no longer in the truncated transcript.");
+            }
             return false; // return false to insert new row into VARIANT_TRANSCRIPT: at least variant location will be available
         }
     }
@@ -559,11 +619,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 if (feature.stop < threeUtr.start) {
                     // use entire feature
                 } else if (feature.start < threeUtr.start) {
-                    getLogWriter().write("feature start reset to " + (threeUtr.start - 1) + "\n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write("feature start reset to " + (threeUtr.start - 1) + "\n");
+                    }
                     feature.stop = threeUtr.start - 1;
                 } else {
                     // remove all of exome
-                    getLogWriter().write("3Prime removed  feature \n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write("3Prime removed  feature \n");
+                    }
                     feature.start = -1;
                     feature.stop = -1;
                 }
@@ -574,11 +638,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 if (feature.start > fiveUtr.stop) {
                     // use entire feature
                 } else if (feature.stop > fiveUtr.stop) {
-                    getLogWriter().write("feature stop reset to " + (fiveUtr.stop + 1) + "\n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write("feature stop reset to " + (fiveUtr.stop + 1) + "\n");
+                    }
                     feature.start = fiveUtr.stop + 1;
                 } else {
                     // remove all of exome
-                    getLogWriter().write("5Prime removed feature" + "\n");
+                    if( isDbgLogging() ) {
+                        getLogWriter().write("5Prime removed feature" + "\n");
+                    }
                     feature.start = -1;
                     feature.stop = -1;
                 }
@@ -761,8 +829,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
     void insertVariantTranscript(long variantId, int transcriptRgdId, String transcriptLocation, String nearSpliceSite) throws Exception {
         insertVariantTranscript(variantId, transcriptRgdId, null, null, null, transcriptLocation, nearSpliceSite, null,
                 null, null, null, null, null,null);
-        getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
-                + ", " + transcriptRgdId + " \n");
+        if( isDbgLogging() ) {
+            getLogWriter().write("		Found variant at Location  " + transcriptLocation + " found for " + variantId
+                    + ", " + transcriptRgdId + " \n");
+        }
         //logStatusMsg("		Found variant for variantId " + variantId + ", transcriptId " + transcriptRgdId + " \n");
     }
 
@@ -1254,6 +1324,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
     public String getLogDir() {
         return logDir;
+    }
+
+    public boolean isDbgLogging() {
+        return dbgLogging;
+    }
+
+    public void setDbgLogging(boolean dbgLogging) {
+        this.dbgLogging = dbgLogging;
     }
 
     class Feature {
