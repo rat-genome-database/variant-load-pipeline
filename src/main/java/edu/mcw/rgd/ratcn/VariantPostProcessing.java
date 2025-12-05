@@ -71,6 +71,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
 
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
+        System.out.println("DBG_LOGGING = "+instance.isDbgLogging());
 
         for( Integer key: mapKeys ) {
             instance.mapKey = key;
@@ -86,15 +87,22 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         String msg =
                 getVersion() + "\n" +
-                        "processing assembly " + mapKey + "\n" +
-                        "   chromosome: " + chr + "\n";
+                "processing assembly " + mapKey + "\n" +
+                "   chromosome: " + (chr==null?"all":chr) + "\n";
         System.out.println(msg);
         logStatusMsg(msg);
 
         // open main log file
         String fileName = getLogDir()+getLogFile();
         fileName = fileName.replace("###ASSEMBLY###", Integer.toString(mapKey));
-        setLogWriter(new BufferedWriter(new FileWriter(fileName)));
+
+        // for DBG logging, the log file could be huge -- we use BufferedWriter for performance reasons
+        // however, for normal logging, we do not want to buffer the output at all
+        if( isDbgLogging() ) {
+            setLogWriter(new BufferedWriter(new FileWriter(fileName)));
+        } else {
+            setLogWriter(new FileWriter(fileName));
+        }
         getLogWriter().write(msg);
 
         // Log start
@@ -121,7 +129,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         msg = "Assembly "+mapKey+" processing complete!";
         System.out.println(msg);
         logStatusMsg(msg);
-        getLogWriter().write("Assembly processing complete!\n");
+        getLogWriter().write(msg+"\n");
         getLogWriter().close();
 
         System.out.println();
@@ -136,18 +144,20 @@ public class VariantPostProcessing extends VariantProcessingBase {
         fastaParser.setMapKey(mapKey);
         List<String> chromosomes = getChromosomes(mapKey);
         Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
+        int stepNr = 0;
         for( String chr: chromosomes ) {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
                 continue;
             }
 
-            System.out.println("  chr "+chr);
+            stepNr++;
+            System.out.println(stepNr+".  chr "+chr+"  map_key="+mapKey);
 
-            processChromosome(chr, fastaParser);
+            processChromosome(stepNr, chr, fastaParser);
 
             getLogWriter().flush();
         }
-        System.out.println("---OK---");
+        System.out.println("---OK---   map_key="+mapKey);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -155,11 +165,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
     // for this chromosome and processing these variants
     //
     private VariantTranscriptBatch batch;
-    void processChromosome(String chr, FastaParser fastaFile) throws Exception {
+    void processChromosome(int stepNr, String chr, FastaParser fastaFile) throws Exception {
+
+        final String chrMapKey = " chr" + chr + ",  map_key="+mapKey+" -----------\n";
+        final String STEP = "STEP "+stepNr+". ------ ";
 
         long timestamp = System.currentTimeMillis();
-        logStatusMsg("CHR " + chr);
-        getLogWriter().write("----------------- Start Processing of Chromosome " + chr + " -----------------\n");
+        logStatusMsg("CHR " + chr+",   MAP_KEY="+mapKey);
+        getLogWriter().write(STEP+"Start Processing of "+chrMapKey);
         fastaFile.setChr(chr);
 
         long totalCount = 1;
@@ -168,24 +181,24 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         int preloadedCount;
         if(verifyIfInRgd) {
-            getLogWriter().write("------ PRELOAD VARIANT_TRANSCRIPT for chr"+chr+" --------\n");
+            getLogWriter().write(STEP+"PRELOAD VARIANT_TRANSCRIPT for "+chrMapKey);
             preloadedCount = batch.preloadVariantTranscriptData(mapKey, chr);
-            logStatusMsg("------ PRELOADED: " + preloadedCount + "\n");
+            logStatusMsg(STEP+"PRELOADED: " + preloadedCount + " for "+chrMapKey);
             System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
         }
-        getLogWriter().write("------ INIT GENE CACHE for chr"+chr+" --------\n");
+        getLogWriter().write(STEP+"INIT GENE CACHE for "+chrMapKey);
         preloadedCount = geneCache.loadCache(mapKey, chr, getDataSource());
-        logStatusMsg("------ INIT GENE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg(STEP+"INIT GENE CACHE complete; count="+preloadedCount+" for "+chrMapKey);
         System.out.println("-- GENE CACHE PRELOADED: "+preloadedCount);
 
-        getLogWriter().write("------ INIT TRANSCRIPT CACHE for chr"+chr+" --------\n");
+        getLogWriter().write(STEP+"INIT TRANSCRIPT CACHE for "+chrMapKey);
         preloadedCount = transcriptCache.loadCache(mapKey, chr, getDataSource());
-        logStatusMsg("------ INIT TRANSCRIPT CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg(STEP+"INIT TRANSCRIPT CACHE complete; count="+preloadedCount+" for "+chrMapKey);
         System.out.println("-- TRANSCRIPT CACHE PRELOADED: "+preloadedCount);
 
-        getLogWriter().write("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" --------\n");
+        getLogWriter().write(STEP+"INIT TRANSCRIPT FEATURE CACHE for "+chrMapKey);
         preloadedCount = transcriptFeatureCache.loadCache(mapKey, chr, getDataSource());
-        logStatusMsg("------ INIT TRANSCRIPT FEATURE CACHE for chr"+chr+" complete: "+preloadedCount+"\n");
+        logStatusMsg(STEP+"INIT TRANSCRIPT FEATURE CACHE complete; count="+preloadedCount+" for "+chrMapKey);
         System.out.println("-- TRANSCRIPT FEATURE CACHE PRELOADED: "+preloadedCount);
 
 
@@ -204,14 +217,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 continue;
 
             if( isDbgLogging() ) {
-                getLogWriter().write("------------------- Start Processing of Variant ---------\n");
+                getLogWriter().write("--------------- Start Processing of Variant ---------\n");
                 getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
             }
 
             // Get all GENES for this variant
             for( int geneRgdId: geneCache.getGeneRgdIds(varStart) ) {
                 if( isDbgLogging() ) {
-                    getLogWriter().write("	--------------- Start Processing for gene rgdId " + geneRgdId + " --------\n");
+                    getLogWriter().write("	----------- Start Processing for gene rgdId " + geneRgdId + " --------\n");
                 }
                 initGene(geneRgdId);
 
@@ -286,12 +299,12 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         batch.flush();
 
-        String msg = "assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
+        String msg = STEP+"assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
                 +", up-to-date="+batch.getRowsUpToDate()
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
         logStatusMsg(msg);
-        logStatusMsg("Total variants for assembly="+mapKey+" chr"+chr+" = "+totalCount);
+        logStatusMsg(STEP+"Total variants for assembly="+mapKey+" chr"+chr+" = "+totalCount);
     }
 
     void processFeatures(int transcriptRgdId, String chr, int mapKey, TranscriptFlags tflags, int varStart, int varStop, int totalExonCount) throws Exception {

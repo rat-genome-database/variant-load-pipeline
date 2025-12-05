@@ -2,7 +2,6 @@ package edu.mcw.rgd.ratcn;
 
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.GenomicElementDAO;
-import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.dao.impl.variants.VariantDAO;
 import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.dao.spring.StringListQuery;
@@ -15,6 +14,7 @@ import org.springframework.jdbc.object.SqlUpdate;
 import javax.sql.DataSource;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.Writer;
 import java.sql.DatabaseMetaData;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -23,17 +23,15 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * Created by IntelliJ IDEA.
  * User: mtutaj
  * Date: 11/11/13
- * Time: 11:47 AM
  * <p>
  * contains code reused by different variant loaders
  */
 public class VariantProcessingBase {
 
     private DataSource dataSource;
-    private BufferedWriter logWriter;
+    private Writer logWriter;
     private Logger logStatus = Logger.getLogger("status");
     VariantDAO vdao = new VariantDAO();
 
@@ -424,11 +422,11 @@ public class VariantProcessingBase {
         this.dataSource = dataSource;
     }
 
-    public BufferedWriter getLogWriter() {
+    public Writer getLogWriter() {
         return logWriter;
     }
 
-    public void setLogWriter(BufferedWriter logWriter) {
+    public void setLogWriter(Writer logWriter) {
         this.logWriter = logWriter;
     }
 
