@@ -351,7 +351,7 @@ public class Polyphen extends VariantProcessingBase {
         getLogWriter().write("\n  refSeqProteinRightPartMismatch = "+refSeqProteinRightPartMismatch);
         getLogWriter().write("\n  proteinRefSeqNotInRgd = "+proteinRefSeqNotInRgd);
         getLogWriter().write("\n  stopCodonsInProtein = "+stopCodonsInProtein);
-        getLogWriter().newLine();
+        getLogWriter().write("\n");
     }
 
     void writeFastaFile(String proteinAccId, String fullRefAA) throws IOException {

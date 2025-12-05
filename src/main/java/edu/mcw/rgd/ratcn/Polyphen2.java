@@ -266,7 +266,7 @@ public class Polyphen2 extends VariantProcessingBase {
         getLogWriter().write("\n  proteinRefSeqNotInRgd = "+proteinRefSeqNotInRgd);
         getLogWriter().write("\n  TOTAL VARIANT_TRANSCRIPT ROWS PROCESSED = "+(proteinRefSeqNotInRgd+variantsProcessed+
             refSeqProteinLengthErrors+refSeqProteinLeftPartMismatch+refSeqProteinRightPartMismatch));
-        getLogWriter().newLine();
+        getLogWriter().write("\n");
     }
 
     List<Sequence> getProteinSequences(int transcriptRgdId) throws Exception {
