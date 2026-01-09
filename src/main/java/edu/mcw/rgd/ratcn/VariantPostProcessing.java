@@ -520,7 +520,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
             String transcriptErrorFound = "F";
             if (mapKey==60) {
                 // Check for rna evenly divisable by 3 or log as error
-                
+
                 if (refDna.length() % 3 != 0) {
                     writeError(variantId + ":" + transcriptRgdId + ":" + refDna.length() + ":" + ((new Date()).toString()) + ":TRIPLETERROR\n", mapKey);
                     if (isDbgLogging()) {
@@ -700,6 +700,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         StringBuilder out = new StringBuilder(dna.length() / 3);
         for( int i=0; i<dna.length(); i+=3 ) {
+            if ((i+1) >= dna.length() || (i+2) >= dna.length()) {
+                out.append("?"); // frameshift
+                break;
+            }
             char c1 = Character.toUpperCase(dna.charAt(i + 0));
             char c2 = Character.toUpperCase(dna.charAt(i + 1));
             char c3 = Character.toUpperCase(dna.charAt(i + 2));
