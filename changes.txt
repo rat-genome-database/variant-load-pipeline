@@ -1,4 +1,7 @@
-﻿Dec 03, 2025
+﻿Jan 09, 2026
+  postprocessing: check if RNA is divisible by 3 is only for rn3.4 
+
+Dec 03, 2025
   postprocessing: logging of debug output is now configurable
                   it is turned off by default
 
