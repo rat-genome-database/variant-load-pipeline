@@ -20,6 +20,7 @@ import java.util.*;
  * @author mtutaj
  * @since 11/15/13
  * convenience class for inserting variant_transcript rows in batches
+ * MODIFIED: Now supports updating existing records when values differ
  */
 public class VariantTranscriptBatch {
 
@@ -50,6 +51,7 @@ public class VariantTranscriptBatch {
 
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;
+    private int rowsUpdated = 0;  // NEW: track updated records
     private boolean verifyIfInRgd = true;
 
 
@@ -64,38 +66,107 @@ public class VariantTranscriptBatch {
         return rowsUpToDate;
     }
 
+    public int getRowsUpdated() {
+        return rowsUpdated;
+    }
+
     /// preload existing variant transcript data for the entire chromosome
     /// useful for ClinVar data
+    /// MODIFIED: Now loads complete records with all fields for comparison
     public int preloadVariantTranscriptData(int mapKey, String chr) throws Exception {
-        String sql = "SELECT variant_rgd_id,transcript_rgd_id FROM variant_transcript vt \n" +
-                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND v.map_key=? AND v.chromosome=?) and vt.map_key=?";
+        String sql = "SELECT variant_rgd_id, transcript_rgd_id, ref_aa, var_aa, syn_status, " +
+                "location_name, near_splice_site, full_ref_aa_pos, full_ref_nuc_pos, " +
+                "triplet_error, full_ref_aa_seq_key, full_ref_nuc_seq_key, frameshift " +
+                "FROM variant_transcript vt \n" +
+                "WHERE EXISTS(SELECT 1 FROM variant_map_data v WHERE v.rgd_id=vt.variant_rgd_id AND v.map_key=? AND v.chromosome=?) " +
+                "AND vt.map_key=?";
 
-        vtData = new HashMap();
+        vtData = new HashMap<>();
         Connection conn = DataSourceFactory.getInstance().getDataSource("Carpe").getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setInt(1,mapKey);
+        ps.setInt(1, mapKey);
         ps.setString(2, chr);
-        ps.setInt(3,mapKey);
+        ps.setInt(3, mapKey);
         ResultSet rs = ps.executeQuery();
+
         while( rs.next() ) {
-            // KEY(variant_id,transcript_rgd_id)
-            long key = rs.getLong(1);
-            // VALUE(variant_transcript_id)
-            int value = rs.getInt(2);
+            VariantTranscript vt = new VariantTranscript();
+            vt.setVariantId(rs.getLong(1));
+            vt.setTranscriptRgdId(rs.getInt(2));
+            vt.setRefAA(rs.getString(3));
+            vt.setVarAA(rs.getString(4));
+            vt.setSynStatus(rs.getString(5));
+            vt.setLocationName(rs.getString(6));
+            vt.setNearSpliceSite(rs.getString(7));
 
-            List<Integer> values = vtData.get(key);
-            if( values==null ) {
-                values = new ArrayList<>();
-            }
-            values.add(value);
-            vtData.put(key, values);
+            // Handle nullable integers
+            int aaPos = rs.getInt(8);
+            vt.setFullRefAAPos(rs.wasNull() ? null : aaPos);
 
+            int nucPos = rs.getInt(9);
+            vt.setFullRefNucPos(rs.wasNull() ? null : nucPos);
+
+            vt.setTripletError(rs.getString(10));
+
+            int aaSeqKey = rs.getInt(11);
+            vt.setFullRefAASeqKey(rs.wasNull() ? 0 : aaSeqKey);
+
+            int nucSeqKey = rs.getInt(12);
+            vt.setFullRefNucSeqKey(rs.wasNull() ? 0 : nucSeqKey);
+
+            vt.setFrameShift(rs.getString(13));
+            vt.setMapKey(mapKey);
+
+            // Create composite key: variant_rgd_id + "_" + transcript_rgd_id
+            String key = vt.getVariantId() + "_" + vt.getTranscriptRgdId();
+            vtData.put(key, vt);
         }
         conn.close();
 
         return vtData.size();
     }
-    private Map<Long, List<Integer>> vtData = null; // KEY(variant_id,transcript_rgd_id) ==> VALUE(variant_transcript_id)
+
+    // MODIFIED: Now stores complete VariantTranscript objects
+    private Map<String, VariantTranscript> vtData = null;
+
+    /**
+     * Check if two VariantTranscript objects have different field values
+     * @param existing The existing record from database
+     * @param newVt The newly calculated record
+     * @return true if any field differs
+     */
+    private boolean recordsDiffer(VariantTranscript existing, VariantTranscript newVt) {
+        // Compare all relevant fields
+        if (!stringsEqual(existing.getRefAA(), newVt.getRefAA())) return true;
+        if (!stringsEqual(existing.getVarAA(), newVt.getVarAA())) return true;
+        if (!stringsEqual(existing.getSynStatus(), newVt.getSynStatus())) return true;
+        if (!stringsEqual(existing.getLocationName(), newVt.getLocationName())) return true;
+        if (!stringsEqual(existing.getNearSpliceSite(), newVt.getNearSpliceSite())) return true;
+        if (!stringsEqual(existing.getTripletError(), newVt.getTripletError())) return true;
+        if (!stringsEqual(existing.getFrameShift(), newVt.getFrameShift())) return true;
+
+        // Compare nullable integers
+        if (!integersEqual(existing.getFullRefAAPos(), newVt.getFullRefAAPos())) return true;
+        if (!integersEqual(existing.getFullRefNucPos(), newVt.getFullRefNucPos())) return true;
+
+        // Compare sequence keys (0 means null in this context)
+        if (existing.getFullRefAASeqKey() != newVt.getFullRefAASeqKey()) return true;
+        if (existing.getFullRefNucSeqKey() != newVt.getFullRefNucSeqKey()) return true;
+
+        return false;
+    }
+
+    private boolean stringsEqual(String s1, String s2) {
+        if (s1 == null && s2 == null) return true;
+        if (s1 == null || s2 == null) return false;
+        return s1.equals(s2);
+    }
+
+    private boolean integersEqual(Integer i1, Integer i2) {
+        if (i1 == null && i2 == null) return true;
+        if (i1 == null || i2 == null) return false;
+        return i1.equals(i2);
+    }
 
     /**
      *
@@ -126,7 +197,6 @@ public class VariantTranscriptBatch {
         int affectedRows = batch.size();
         rowsCommitted += affectedRows;
         batch.clear();
-        //System.out.println("  VARIANT_TRANSCRIPT inserted rows "+rowsCommitted);
         return affectedRows;
     }
 
@@ -174,67 +244,99 @@ public class VariantTranscriptBatch {
        bsu.flush();
     }
 
-    void insertRowsWithoutBatch() throws Exception{
-        if (batch.isEmpty())
+    /**
+     * NEW METHOD: Batch update existing records
+     */
+    void updateRowsBatch(List<VariantTranscript> updateList) throws Exception {
+        if (updateList.isEmpty())
             return;
-        String sql = "INSERT INTO VARIANT_TRANSCRIPT \n" +
-                "( VARIANT_RGD_ID, TRANSCRIPT_RGD_ID, REF_AA,\n" +
-                "VAR_AA, SYN_STATUS, LOCATION_NAME, NEAR_SPLICE_SITE,\n" +
-                "FULL_REF_AA_POS, FULL_REF_NUC_POS, TRIPLET_ERROR, FULL_REF_AA_SEQ_KEY, FULL_REF_NUC_SEQ_KEY, FRAMESHIFT,MAP_KEY)\n" +
-                "VALUES( ?, ?, ?,\n" +
-                " ?, ?, ?, ?,\n" +
-                "?,?,?,?,?,?,?)";
-        Connection conn = DataSourceFactory.getInstance().getDataSource("Carpe").getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql);
-        for (VariantTranscript vt : batch){
-            try {
-                ps.setLong(1, vt.getVariantId());
-                ps.setLong(2, vt.getTranscriptRgdId());
-                ps.setString(3, vt.getRefAA());
-                ps.setString(4, vt.getVarAA());
-                ps.setString(5, vt.getSynStatus());
-                ps.setString(6, vt.getLocationName());
-                ps.setString(7, vt.getNearSpliceSite());
-                ps.setInt(8, vt.getFullRefAAPos());
-                ps.setInt(9, vt.getFullRefNucPos());
-                ps.setString(10, vt.getTripletError());
-                ps.setInt(11, vt.getFullRefAASeqKey());
-                ps.setInt(12, vt.getFullRefNucSeqKey());
-                ps.setString(13, vt.getFrameShift());
-                ps.setInt(14, vt.getMapKey());
 
-                ps.executeQuery();
-            }
-            catch (Exception e){
-                System.out.println("variant_rgd_id="+vt.getVariantId()+" transcript_rgd_id="+ vt.getTranscriptRgdId()+" map_key="+vt.getMapKey());
-            }
+        BatchSqlUpdate bsu = new BatchSqlUpdate(DataSourceFactory.getInstance().getDataSource("Carpe"),
+                "UPDATE VARIANT_TRANSCRIPT SET " +
+                "REF_AA=?, VAR_AA=?, SYN_STATUS=?, LOCATION_NAME=?, NEAR_SPLICE_SITE=?, " +
+                "FULL_REF_AA_POS=?, FULL_REF_NUC_POS=?, TRIPLET_ERROR=?, " +
+                "FULL_REF_AA_SEQ_KEY=?, FULL_REF_NUC_SEQ_KEY=?, FRAMESHIFT=? " +
+                "WHERE VARIANT_RGD_ID=? AND TRANSCRIPT_RGD_ID=? AND MAP_KEY=?",
+                new int[]{
+                    Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,  // REF_AA through NEAR_SPLICE_SITE
+                    Types.INTEGER, Types.INTEGER, Types.VARCHAR,                                  // AA_POS, NUC_POS, TRIPLET_ERROR
+                    Types.INTEGER, Types.INTEGER, Types.VARCHAR,                                  // AA_SEQ_KEY, NUC_SEQ_KEY, FRAMESHIFT
+                    Types.INTEGER, Types.INTEGER, Types.INTEGER                                   // WHERE: VARIANT_RGD_ID, TRANSCRIPT_RGD_ID, MAP_KEY
+                }, 10000);
+
+        bsu.compile();
+
+        for (VariantTranscript vt : updateList) {
+            bsu.update(
+                vt.getRefAA(),
+                vt.getVarAA(),
+                vt.getSynStatus(),
+                vt.getLocationName(),
+                vt.getNearSpliceSite(),
+                vt.getFullRefAAPos(),
+                vt.getFullRefNucPos(),
+                vt.getTripletError(),
+                vt.getFullRefAASeqKey() == 0 ? null : vt.getFullRefAASeqKey(),
+                vt.getFullRefNucSeqKey() == 0 ? null : vt.getFullRefNucSeqKey(),
+                vt.getFrameShift(),
+                vt.getVariantId(),
+                vt.getTranscriptRgdId(),
+                vt.getMapKey()
+            );
         }
+
+        bsu.flush();
+        rowsUpdated += updateList.size();
     }
 
+    /**
+     * MODIFIED: Now compares existing records and updates if different
+     */
     void insertRowsWithVerify() throws Exception {
 
         if( vtData!=null ) {
             // use preloaded data
 
-            // remove from batch rows that are already in rgd
-            Iterator<VariantTranscript> it = batch.iterator();
-            while( it.hasNext() ) {
-                VariantTranscript vt = it.next();
-                long key = vt.getVariantId();
-                //+","+vt.getTranscriptRgdId();
-                List<Integer> results = vtData.get(key);
-                if( results!=null ) {
-                    for(int result:results){
-                        if(result == vt.getTranscriptRgdId()){
-                            rowsUpToDate++;
-                            it.remove();
-                        }
-                    }
+            List<VariantTranscript> toUpdate = new ArrayList<>();
+            List<VariantTranscript> toInsert = new ArrayList<>();
 
+            // Categorize each record: update, insert, or skip
+            for (VariantTranscript newVt : batch) {
+                String key = newVt.getVariantId() + "_" + newVt.getTranscriptRgdId();
+                VariantTranscript existing = vtData.get(key);
+
+                if (existing != null) {
+                    // Record exists - check if values differ
+                    if (recordsDiffer(existing, newVt)) {
+                        toUpdate.add(newVt);
+                    } else {
+                        rowsUpToDate++;  // Truly up-to-date
+                    }
+                } else {
+                    // Record doesn't exist - needs insert
+                    toInsert.add(newVt);
                 }
             }
+
+            // Perform batch updates
+            if (!toUpdate.isEmpty()) {
+                updateRowsBatch(toUpdate);
+            }
+
+            // Perform batch inserts
+            if (!toInsert.isEmpty()) {
+                batch.clear();
+                batch.addAll(toInsert);
+                insertRowsNoVerify();
+            } else {
+                // Nothing to insert
+                batch.clear();
+            }
+
+        } else {
+            // No preloaded data - just insert
+            insertRowsNoVerify();
         }
-        insertRowsNoVerify();
     }
 
     public boolean isVerifyIfInRgd() {

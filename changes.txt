@@ -1,4 +1,9 @@
-﻿Jan 09, 2026
+﻿Jan 13, 2026
+  VariantTranscriptBatch: fixed issue where existing VARIANT_TRANSCRIPT records were not being updated
+                          now compares all fields and updates records when values differ
+                          added rowsUpdated tracking to logging
+
+Jan 09, 2026
   postprocessing: check if RNA is divisible by 3 is only for rn3.4
                   seq is not divisible by 3, ends with a '?'
 

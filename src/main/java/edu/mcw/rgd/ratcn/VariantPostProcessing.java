@@ -300,6 +300,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         batch.flush();
 
         String msg = STEP+"assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
+                +", updated="+batch.getRowsUpdated()
                 +", up-to-date="+batch.getRowsUpToDate()
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
