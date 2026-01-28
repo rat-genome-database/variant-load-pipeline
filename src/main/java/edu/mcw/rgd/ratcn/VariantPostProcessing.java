@@ -33,6 +33,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String logDir;
     private boolean dbgLogging;
     private boolean verifyIfInRgd = false;
+    private boolean useSelectivePreload = false;  // When true, preload only batch variants instead of entire chromosome
     int mapKey = 0;
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
@@ -64,6 +65,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 instance.verifyIfInRgd = true;
             }
 
+            if( args[i].equals("--selectivePreload") ) {
+                instance.useSelectivePreload = true;
+            }
+
             if( args[i].equals("--chr") ) {
                 chr = args[++i];
                 System.out.println("CHR = "+chr);
@@ -71,6 +76,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
 
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
+        System.out.println("SELECTIVE_PRELOAD = "+instance.useSelectivePreload);
         System.out.println("DBG_LOGGING = "+instance.isDbgLogging());
 
         for( Integer key: mapKeys ) {
@@ -180,11 +186,16 @@ public class VariantPostProcessing extends VariantProcessingBase {
         batch.setVerifyIfInRgd(verifyIfInRgd);
 
         int preloadedCount;
-        if(verifyIfInRgd) {
+        if(verifyIfInRgd && !useSelectivePreload) {
+            // Chromosome-wide preload - loads all variant_transcript records for the chromosome
             getLogWriter().write(STEP+"PRELOAD VARIANT_TRANSCRIPT for "+chrMapKey);
             preloadedCount = batch.preloadVariantTranscriptData(mapKey, chr);
             logStatusMsg(STEP+"PRELOADED: " + preloadedCount + " for "+chrMapKey);
             System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
+        } else if(verifyIfInRgd && useSelectivePreload) {
+            // Selective preload mode - will preload only batch variants at flush time
+            getLogWriter().write(STEP+"SELECTIVE PRELOAD MODE enabled for "+chrMapKey);
+            System.out.println("-- VT CACHE: SELECTIVE PRELOAD MODE (per-batch)");
         }
         getLogWriter().write(STEP+"INIT GENE CACHE for "+chrMapKey);
         preloadedCount = geneCache.loadCache(mapKey, chr, getDataSource());
@@ -422,6 +433,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
         int fcount = 1;
         int variantRelPos = 0; // relative position of the variant in the entire combined exome sequence
         boolean foundInExon = false;
+        int deletionLengthInCodingSeq = 0; // For large deletions spanning exons, track coding sequence impact
+
         // Determine the relative position the variant occurs at
         for (Feature feature: tflags.exomsArray) {
             if( isDbgLogging() ) {
@@ -429,17 +442,45 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
             // See if feature was skipped entirely by removal from 5PrimteUTR
             if (feature.start != -1) {
-                if (feature.start <= varStart && feature.stop > varStop) {
+                // Check if variant START falls within this exon
+                if (feature.start <= varStart && feature.stop >= varStart) {
                     String dnaChunk = getDnaChunk(fastaFile, feature.start, feature.stop);
                     foundInExon = true;
                     variantRelPos += (varStart - (feature.start - 1)); // add length of partial feature
+
+                    // Calculate how much of this exon is affected by the deletion
+                    // For deletions spanning multiple exons, varStop may be beyond this exon
+                    if (varStop <= feature.stop) {
+                        // Variant fits entirely within this exon (original case)
+                        deletionLengthInCodingSeq = varStop - varStart;
+                    } else {
+                        // Deletion extends beyond this exon - calculate partial deletion
+                        deletionLengthInCodingSeq = feature.stop - varStart + 1;
+                    }
+
                     if( isDbgLogging() ) {
                         getLogWriter().write(" 		DNA :" + dnaChunk + "\n");
                         getLogWriter().write("Variant found in feature # " + fcount + "\n");
                         getLogWriter().write("Relative variant position found as " + variantRelPos + "\n");
+                        getLogWriter().write("Deletion length in this exon: " + deletionLengthInCodingSeq + "\n");
                     }
-                    break;
-                } else {
+                    // Don't break - continue to find additional affected exons for spanning deletions
+                } else if (foundInExon && feature.start <= varStop) {
+                    // This exon is affected by a spanning deletion (deletion started in earlier exon)
+                    if (varStop <= feature.stop) {
+                        // Deletion ends in this exon
+                        deletionLengthInCodingSeq += (varStop - feature.start + 1);
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("Spanning deletion ends in exon " + fcount + ", added " + (varStop - feature.start + 1) + " bp\n");
+                        }
+                    } else {
+                        // Entire exon is deleted
+                        deletionLengthInCodingSeq += (feature.stop - feature.start + 1);
+                        if( isDbgLogging() ) {
+                            getLogWriter().write("Entire exon " + fcount + " deleted, added " + (feature.stop - feature.start + 1) + " bp\n");
+                        }
+                    }
+                } else if (!foundInExon) {
                     variantRelPos += (feature.stop - feature.start) + 1;  // add length of entire feature
                 }
             }
@@ -473,10 +514,20 @@ public class VariantPostProcessing extends VariantProcessingBase {
             // handle deletion
             if (varNuc == null || varNuc.contains("-")) {
                 int deletionLength;
-                if (varNuc == null)
+                if (deletionLengthInCodingSeq > 0) {
+                    // Use pre-calculated length for spanning deletions
+                    deletionLength = deletionLengthInCodingSeq;
+                } else if (varNuc == null) {
                     deletionLength = 1;
-                else deletionLength = varNuc.length();
-                varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, "");
+                } else {
+                    deletionLength = refNuc != null ? refNuc.length() : 1;
+                }
+                // Ensure we don't delete beyond the sequence
+                int deleteEnd = Math.min(variantRelPos - 1 + deletionLength, varDna.length());
+                varDna.replace(variantRelPos - 1, deleteEnd, "");
+                if( isDbgLogging() ) {
+                    getLogWriter().write("Deletion applied: pos=" + (variantRelPos-1) + ", length=" + deletionLength + " (coding seq)\n");
+                }
             }
             // handle insertion
             else if (refNuc == null || refNuc.contains("-")) {
@@ -486,7 +537,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
             else if (refNuc.length() == 1 && varNuc.length() > 1) {
                 varDna.insert(variantRelPos, varNuc.substring(1));
             } else if (refNuc.length() != 1 || varNuc.length() != 1) {
-                int deletionLength = varStop - varStart;
+                // Complex indel - use deletionLengthInCodingSeq if available for spanning deletions
+                int deletionLength = deletionLengthInCodingSeq > 0 ? deletionLengthInCodingSeq : (varStop - varStart);
                 varDna.replace(variantRelPos - 1, variantRelPos - 1 + deletionLength, varNuc);
             } else {
                 varDna.setCharAt(variantRelPos - 1, varNuc.charAt(0));
@@ -597,8 +649,21 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         // Check if the variant still falls in the transcript
         if (pos>0 && pos <= rnaRefTranslated.length() && pos <= rnaVarTranslated.length()) {
-            String LRef = rnaRefTranslated.substring(pos-1, pos);
-            String LVar = rnaVarTranslated.substring(pos-1, pos);
+            int lenDiffRefVar = Math.abs(refDna.length() - varDna.length());
+            int reminder = lenDiffRefVar%3;
+            String isFrameShift = reminder!=0 ? "T" : "F";
+            int refEnd = pos;
+            int varEnd = pos;
+            if (!Utils.stringsAreEqual(isFrameShift,"F")){
+                int extPos = lenDiffRefVar / 3;
+                varEnd = pos + extPos;
+            }
+            if (varEnd > rnaVarTranslated.length())
+                varEnd = rnaVarTranslated.length();
+
+
+            String LRef = rnaRefTranslated.substring(pos - 1, refEnd);
+            String LVar = rnaVarTranslated.substring(pos - 1, varEnd);
 
             if( isDbgLogging() ) {
                 getLogWriter().write("Calculated  Ref AA = " + LRef + " Var AA = " + LVar + "\n");
@@ -610,13 +675,28 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             // compute frameshift
             // compute length difference between reference and variant nucleotides
-            int lenDiffRefVar = Math.abs(refDna.length() - varDna.length());
-            int reminder = lenDiffRefVar%3;
-            String isFrameShift = reminder!=0 ? "T" : "F";
 
-            insertVariantTranscript(variantId, transcriptRgdId, LRef, LVar,
-                    synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
-                    rnaRefTranslated, refDna.toString(), isFrameShift,chr);
+
+            if (Utils.stringsAreEqual(isFrameShift,"T")){
+                String varFromVarAAPos = rnaVarTranslated.substring(pos -1);
+                int stopCodon = varFromVarAAPos.indexOf("*");
+                String varFromVarAAToStop;
+                if (stopCodon > 0)
+                    varFromVarAAToStop = varFromVarAAPos.substring(0,stopCodon);
+                else {
+                    varFromVarAAToStop = varFromVarAAPos;
+                }
+                if (varFromVarAAToStop.length()>4000)
+                    varFromVarAAPos = varFromVarAAToStop.substring(0,4000);
+                insertVariantTranscript(variantId, transcriptRgdId, LRef, varFromVarAAToStop,
+                        synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
+                        rnaRefTranslated, refDna.toString(), isFrameShift, chr);
+            }
+            else {
+                insertVariantTranscript(variantId, transcriptRgdId, LRef, LVar,
+                        synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
+                        rnaRefTranslated, refDna.toString(), isFrameShift, chr);
+            }
 
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         } else {

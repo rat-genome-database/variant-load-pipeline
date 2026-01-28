@@ -1,7 +1,15 @@
-﻿Jan 13, 2026
+﻿Jan 27, 2026
+  VariantTranscriptBatch: added selective preload optimization (--selectivePreload flag)
+                          instead of loading all variant_transcript records for entire chromosome,
+                          only loads records for variants in current batch (~5000 at a time)
+                          reduces memory usage and speeds up processing for sparse updates
+
+Jan 13, 2026
   VariantTranscriptBatch: fixed issue where existing VARIANT_TRANSCRIPT records were not being updated
                           now compares all fields and updates records when values differ
                           added rowsUpdated tracking to logging
+  postprocessing: fixed handling of large deletions that span multiple exons
+                  now correctly calculates deletion length in coding sequence (excluding introns)
 
 Jan 09, 2026
   postprocessing: check if RNA is divisible by 3 is only for rn3.4

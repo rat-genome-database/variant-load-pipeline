@@ -24,7 +24,7 @@ import java.util.*;
  */
 public class VariantTranscriptBatch {
 
-    public static final int BATCH_SIZE = 10000;
+    public static final int BATCH_SIZE = 5000;
 
     // cache of records accumulated in the batch
     private Set<VariantTranscript> batch = new TreeSet<>(new Comparator() {
@@ -128,6 +128,101 @@ public class VariantTranscriptBatch {
 
     // MODIFIED: Now stores complete VariantTranscript objects
     private Map<String, VariantTranscript> vtData = null;
+
+    // Map key for selective preload - set when adding to batch
+    private int currentMapKey = 0;
+
+    /**
+     * Preload existing variant transcript data for only the variants in the current batch.
+     * More efficient than loading entire chromosome when processing a subset of variants.
+     * Automatically handles Oracle's 1000-item IN clause limit.
+     */
+    private void preloadForBatch() throws Exception {
+        if (batch.isEmpty()) {
+            vtData = new HashMap<>();
+            return;
+        }
+
+        // Collect unique variant IDs from the batch
+        Set<Long> variantIds = new HashSet<>();
+        for (VariantTranscript vt : batch) {
+            variantIds.add(vt.getVariantId());
+            if (currentMapKey == 0) {
+                currentMapKey = vt.getMapKey();
+            }
+        }
+
+        vtData = new HashMap<>();
+        List<Long> idList = new ArrayList<>(variantIds);
+
+        // Oracle has a limit of 1000 items in IN clause - chunk if needed
+        int chunkSize = 1000;
+
+        Connection conn = DataSourceFactory.getInstance().getDataSource("Carpe").getConnection();
+
+        for (int i = 0; i < idList.size(); i += chunkSize) {
+            int end = Math.min(i + chunkSize, idList.size());
+            List<Long> chunk = idList.subList(i, end);
+
+            // Build placeholders for IN clause
+            StringBuilder placeholders = new StringBuilder();
+            for (int j = 0; j < chunk.size(); j++) {
+                if (j > 0) placeholders.append(",");
+                placeholders.append("?");
+            }
+
+            String sql = "SELECT variant_rgd_id, transcript_rgd_id, ref_aa, var_aa, syn_status, " +
+                    "location_name, near_splice_site, full_ref_aa_pos, full_ref_nuc_pos, " +
+                    "triplet_error, full_ref_aa_seq_key, full_ref_nuc_seq_key, frameshift " +
+                    "FROM variant_transcript " +
+                    "WHERE variant_rgd_id IN (" + placeholders + ") AND map_key=?";
+
+            PreparedStatement ps = conn.prepareStatement(sql);
+            int paramIndex = 1;
+            for (Long variantId : chunk) {
+                ps.setLong(paramIndex++, variantId);
+            }
+            ps.setInt(paramIndex, currentMapKey);
+
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                VariantTranscript vt = new VariantTranscript();
+                vt.setVariantId(rs.getLong(1));
+                vt.setTranscriptRgdId(rs.getInt(2));
+                vt.setRefAA(rs.getString(3));
+                vt.setVarAA(rs.getString(4));
+                vt.setSynStatus(rs.getString(5));
+                vt.setLocationName(rs.getString(6));
+                vt.setNearSpliceSite(rs.getString(7));
+
+                int aaPos = rs.getInt(8);
+                vt.setFullRefAAPos(rs.wasNull() ? null : aaPos);
+
+                int nucPos = rs.getInt(9);
+                vt.setFullRefNucPos(rs.wasNull() ? null : nucPos);
+
+                vt.setTripletError(rs.getString(10));
+
+                int aaSeqKey = rs.getInt(11);
+                vt.setFullRefAASeqKey(rs.wasNull() ? 0 : aaSeqKey);
+
+                int nucSeqKey = rs.getInt(12);
+                vt.setFullRefNucSeqKey(rs.wasNull() ? 0 : nucSeqKey);
+
+                vt.setFrameShift(rs.getString(13));
+                vt.setMapKey(currentMapKey);
+
+                String key = vt.getVariantId() + "_" + vt.getTranscriptRgdId();
+                vtData.put(key, vt);
+            }
+
+            rs.close();
+            ps.close();
+        }
+
+        conn.close();
+    }
 
     /**
      * Check if two VariantTranscript objects have different field values
@@ -290,52 +385,57 @@ public class VariantTranscriptBatch {
     }
 
     /**
-     * MODIFIED: Now compares existing records and updates if different
+     * MODIFIED: Now compares existing records and updates if different.
+     * Uses selective preload (batch-only) when chromosome-wide preload was not called.
      */
     void insertRowsWithVerify() throws Exception {
 
-        if( vtData!=null ) {
-            // use preloaded data
+        // If no chromosome-wide preload was done, do selective preload for just this batch
+        boolean useSelectivePreload = (vtData == null);
+        if (useSelectivePreload) {
+            preloadForBatch();
+        }
 
-            List<VariantTranscript> toUpdate = new ArrayList<>();
-            List<VariantTranscript> toInsert = new ArrayList<>();
+        List<VariantTranscript> toUpdate = new ArrayList<>();
+        List<VariantTranscript> toInsert = new ArrayList<>();
 
-            // Categorize each record: update, insert, or skip
-            for (VariantTranscript newVt : batch) {
-                String key = newVt.getVariantId() + "_" + newVt.getTranscriptRgdId();
-                VariantTranscript existing = vtData.get(key);
+        // Categorize each record: update, insert, or skip
+        for (VariantTranscript newVt : batch) {
+            String key = newVt.getVariantId() + "_" + newVt.getTranscriptRgdId();
+            VariantTranscript existing = vtData.get(key);
 
-                if (existing != null) {
-                    // Record exists - check if values differ
-                    if (recordsDiffer(existing, newVt)) {
-                        toUpdate.add(newVt);
-                    } else {
-                        rowsUpToDate++;  // Truly up-to-date
-                    }
+            if (existing != null) {
+                // Record exists - check if values differ
+                if (recordsDiffer(existing, newVt)) {
+                    toUpdate.add(newVt);
                 } else {
-                    // Record doesn't exist - needs insert
-                    toInsert.add(newVt);
+                    rowsUpToDate++;  // Truly up-to-date
                 }
-            }
-
-            // Perform batch updates
-            if (!toUpdate.isEmpty()) {
-                updateRowsBatch(toUpdate);
-            }
-
-            // Perform batch inserts
-            if (!toInsert.isEmpty()) {
-                batch.clear();
-                batch.addAll(toInsert);
-                insertRowsNoVerify();
             } else {
-                // Nothing to insert
-                batch.clear();
+                // Record doesn't exist - needs insert
+                toInsert.add(newVt);
             }
+        }
 
-        } else {
-            // No preloaded data - just insert
+        // Perform batch updates
+        if (!toUpdate.isEmpty()) {
+            updateRowsBatch(toUpdate);
+        }
+
+        // Perform batch inserts
+        if (!toInsert.isEmpty()) {
+            batch.clear();
+            batch.addAll(toInsert);
             insertRowsNoVerify();
+        } else {
+            // Nothing to insert
+            batch.clear();
+        }
+
+        // Clear selective preload data after each batch to free memory
+        // (chromosome-wide preload is kept for subsequent batches)
+        if (useSelectivePreload) {
+            vtData = null;
         }
     }
 
