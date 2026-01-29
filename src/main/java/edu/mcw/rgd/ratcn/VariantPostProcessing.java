@@ -33,7 +33,6 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private String logDir;
     private boolean dbgLogging;
     private boolean verifyIfInRgd = false;
-    private boolean useSelectivePreload = false;  // When true, preload only batch variants instead of entire chromosome
     int mapKey = 0;
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
@@ -65,10 +64,6 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 instance.verifyIfInRgd = true;
             }
 
-            if( args[i].equals("--selectivePreload") ) {
-                instance.useSelectivePreload = true;
-            }
-
             if( args[i].equals("--chr") ) {
                 chr = args[++i];
                 System.out.println("CHR = "+chr);
@@ -76,7 +71,6 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
 
         System.out.println("VERIFY_IF_IN_RGD = "+instance.verifyIfInRgd);
-        System.out.println("SELECTIVE_PRELOAD = "+instance.useSelectivePreload);
         System.out.println("DBG_LOGGING = "+instance.isDbgLogging());
 
         for( Integer key: mapKeys ) {
@@ -186,16 +180,10 @@ public class VariantPostProcessing extends VariantProcessingBase {
         batch.setVerifyIfInRgd(verifyIfInRgd);
 
         int preloadedCount;
-        if(verifyIfInRgd && !useSelectivePreload) {
-            // Chromosome-wide preload - loads all variant_transcript records for the chromosome
-            getLogWriter().write(STEP+"PRELOAD VARIANT_TRANSCRIPT for "+chrMapKey);
-            preloadedCount = batch.preloadVariantTranscriptData(mapKey, chr);
-            logStatusMsg(STEP+"PRELOADED: " + preloadedCount + " for "+chrMapKey);
-            System.out.println("-- VT CACHE PRELOADED: " + preloadedCount);
-        } else if(verifyIfInRgd && useSelectivePreload) {
-            // Selective preload mode - will preload only batch variants at flush time
-            getLogWriter().write(STEP+"SELECTIVE PRELOAD MODE enabled for "+chrMapKey);
-            System.out.println("-- VT CACHE: SELECTIVE PRELOAD MODE (per-batch)");
+        // Note: VARIANT_TRANSCRIPT preload removed - using Oracle MERGE for efficient insert-or-update
+        if(verifyIfInRgd) {
+            getLogWriter().write(STEP+"VARIANT_TRANSCRIPT: using MERGE (no preload needed) for "+chrMapKey);
+            System.out.println("-- VT: MERGE MODE (no preload)");
         }
         getLogWriter().write(STEP+"INIT GENE CACHE for "+chrMapKey);
         preloadedCount = geneCache.loadCache(mapKey, chr, getDataSource());
@@ -310,9 +298,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         batch.flush();
 
-        String msg = STEP+"assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows inserted=" + batch.getRowsCommitted()
-                +", updated="+batch.getRowsUpdated()
-                +", up-to-date="+batch.getRowsUpToDate()
+        String msg = STEP+"assembly="+mapKey+" chr"+chr+"  VARIANT_TRANSCRIPT rows merged=" + batch.getRowsCommitted()
                 +", time elapsed " + Utils.formatElapsedTime(timestamp, System.currentTimeMillis());
         System.out.println(msg);
         logStatusMsg(msg);
