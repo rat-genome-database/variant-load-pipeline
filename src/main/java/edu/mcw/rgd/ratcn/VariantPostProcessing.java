@@ -673,7 +673,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                     varFromVarAAToStop = varFromVarAAPos;
                 }
                 if (varFromVarAAToStop.length()>4000)
-                    varFromVarAAPos = varFromVarAAToStop.substring(0,4000);
+                    varFromVarAAToStop = varFromVarAAToStop.substring(0,4000);
                 insertVariantTranscript(variantId, transcriptRgdId, LRef, varFromVarAAToStop,
                         synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
                         rnaRefTranslated, refDna.toString(), isFrameShift, chr);
