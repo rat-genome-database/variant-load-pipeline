@@ -22,6 +22,7 @@ public class TranscriptFeatureCache {
     HashMap<Integer,List<TranscriptFeatureCacheEntry>> result = new HashMap<Integer,List<TranscriptFeatureCacheEntry>>();
     public int loadCache(int mapKey, String chromosome, DataSource ds) throws SQLException {
 
+        result.clear();
 
         String sql = "SELECT tf.transcript_rgd_id,ro.OBJECT_NAME,md.STRAND, md.CHROMOSOME,md.START_POS,md.STOP_POS FROM\n" +
                 "TRANSCRIPT_FEATURES tf inner join rgd_ids r on tf.FEATURE_RGD_ID = r.rgd_id \n" +
@@ -42,11 +43,8 @@ public class TranscriptFeatureCache {
             int startPos = rs.getInt(5);
             int stopPos = rs.getInt(6);
 
-            List<TranscriptFeatureCacheEntry> list = new ArrayList<>();
-            if(result!= null && result.containsKey(transcriptRgdId))
-                list = result.get(transcriptRgdId);
-            list.add(new TranscriptFeatureCacheEntry(transcriptRgdId,objectName,strand,startPos,stopPos,chr));
-            result.put(transcriptRgdId,list);
+            result.computeIfAbsent(transcriptRgdId, k -> new ArrayList<>())
+                  .add(new TranscriptFeatureCacheEntry(transcriptRgdId,objectName,strand,startPos,stopPos,chr));
         }
         conn.close();
 

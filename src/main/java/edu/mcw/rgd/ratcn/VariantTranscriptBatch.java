@@ -18,28 +18,8 @@ public class VariantTranscriptBatch {
 
     public static final int BATCH_SIZE = 10000;
 
-    // cache of records accumulated in the batch
-    private Set<VariantTranscript> batch = new TreeSet<>(new Comparator() {
-        @Override
-        public int compare(Object o1, Object o2) {
-            VariantTranscript vt1 = (VariantTranscript) o1;
-            VariantTranscript vt2 = (VariantTranscript) o2;
-            if(vt1.getVariantId() == vt2.getVariantId()) {
-                if(vt1.getTranscriptRgdId() == vt2.getTranscriptRgdId())
-                    return 0;
-                else{
-                    if(vt1.getTranscriptRgdId() < vt2.getTranscriptRgdId())
-                        return 1;
-                    else return -1;
-                }
-            }else {
-                if(vt1.getVariantId() < vt2.getVariantId())
-                    return 1;
-                else return -1;
-            }
-
-        }
-    });
+    // cache of records accumulated in the batch; deduplicated by variantId + transcriptRgdId
+    private Set<VariantTranscript> batch = new LinkedHashSet<>(BATCH_SIZE * 2);
 
     private int rowsCommitted = 0;
     private int rowsUpToDate = 0;  // Not tracked with MERGE - kept for API compatibility

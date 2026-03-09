@@ -162,4 +162,16 @@ public class VariantTranscript {
     public void setMapKey(int mapKey) {
         this.mapKey = mapKey;
     }
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(variantId) * 31 + Integer.hashCode(transcriptRgdId);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof VariantTranscript vt)) return false;
+        return variantId == vt.variantId && transcriptRgdId == vt.transcriptRgdId;
+    }
 }

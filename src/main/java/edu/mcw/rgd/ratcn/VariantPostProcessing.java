@@ -39,6 +39,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
     MapDAO mdao = new MapDAO();
     TranscriptDAO tdao = new TranscriptDAO();
+    SequenceDAO sequenceDAO = new SequenceDAO();
+
+    // Cache: "transcriptRgdId|seqType" -> seqKey (avoids repeated DB lookups for same transcript)
+    private Map<String, Integer> sequenceKeyCache = new HashMap<>();
+
+    // Cache transcript objects and their map data for getProperChunk() (avoids DB queries per exon per variant)
+    private Map<Integer, Transcript> transcriptObjectCache = new HashMap<>();
+    private Map<Integer, List<MapData>> transcriptMapDataCache = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
 
@@ -143,7 +151,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
         FastaParser fastaParser = new FastaParser();
         fastaParser.setMapKey(mapKey);
         List<String> chromosomes = getChromosomes(mapKey);
-        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
+//        Collections.shuffle(chromosomes); // randomize chromosomes (works better during simultaneous processing of multiple samples)
         int stepNr = 0;
         for( String chr: chromosomes ) {
             if( chrOverride!=null && !chrOverride.equals(chr) ) {
@@ -174,6 +182,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
         logStatusMsg("CHR " + chr+",   MAP_KEY="+mapKey);
         getLogWriter().write(STEP+"Start Processing of "+chrMapKey);
         fastaFile.setChr(chr);
+
+        // Clear per-chromosome caches
+        sequenceKeyCache.clear();
+        transcriptObjectCache.clear();
+        transcriptMapDataCache.clear();
 
         long totalCount = 1;
         batch = new VariantTranscriptBatch();
@@ -220,8 +233,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 getLogWriter().write("Processing variant id " + variantId + " Variant count : " + totalCount + "\n");
             }
 
-            // Get all GENES for this variant
-            for( int geneRgdId: geneCache.getGeneRgdIds(varStart) ) {
+            // Get all GENES that overlap this variant's range [varStart, varStop]
+            for( int geneRgdId: geneCache.getGeneRgdIds(varStart, varStop) ) {
                 if( isDbgLogging() ) {
                     getLogWriter().write("	----------- Start Processing for gene rgdId " + geneRgdId + " --------\n");
                 }
@@ -255,11 +268,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
                         // not found means it was in an INTRON Region
                         if (!tflags.inExon) {
-                            if (tflags.transcriptLocation != null) {
-                                tflags.transcriptLocation += ",INTRON";
-                            } else {
-                                tflags.transcriptLocation = "INTRON";
-                            }
+                            tflags.transcriptLocation.add("INTRON");
                         }
                         if( isDbgLogging() ) {
                             getLogWriter().write("transcriptLocation" + tflags.transcriptLocation + "\n");
@@ -269,11 +278,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                         boolean doInsert = false;
                         if (!tflags.inExon || entry.isNonCodingRegion.equals("Y")) {
                             if (entry.isNonCodingRegion.equals("Y")) {
-                                if (tflags.transcriptLocation != null) {
-                                    tflags.transcriptLocation += ",NON-CODING";
-                                } else {
-                                    tflags.transcriptLocation = "NON-CODING";
-                                }
+                                tflags.transcriptLocation.add("NON-CODING");
                             }
                             doInsert = true;
                         } else {
@@ -285,7 +290,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                         }
 
                         if (doInsert) {
-                            insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
+                            insertVariantTranscript(variantId, entry.transcriptRgdId, tflags.transcriptLocation.toString(), tflags.nearSpliceSite);
                             // No need to determine Amino Acids if variant not in coding part of exon
                         }
                     }
@@ -369,19 +374,11 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 }
 
                 if ((objectName.equals("5UTRS")) || (objectName.equals("3UTRS"))) {
-                    if (tflags.transcriptLocation != null) {
-                        tflags.transcriptLocation += "," + objectName;
-                    } else {
-                        tflags.transcriptLocation = objectName;
-                    }
+                    tflags.transcriptLocation.add(objectName);
                 }
                 // Add only one EXON using inExon to not do this again
                 if (objectName.equals("EXONS") && (!tflags.inExon)) {
-                    if (tflags.transcriptLocation != null) {
-                        tflags.transcriptLocation += ",EXON";
-                    } else {
-                        tflags.transcriptLocation = "EXON";
-                    }
+                    tflags.transcriptLocation.add("EXON");
                     tflags.inExon = true;
                 }
                 if( isDbgLogging() ) {
@@ -603,14 +600,14 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
 
             return handleTranslatedProtein(refDna, varDna, variantRelPos, variantId,
-                    transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite, transcriptErrorFound,chr);
+                    transcriptRgdId, tflags.transcriptLocation.toString(), tflags.nearSpliceSite, transcriptErrorFound,chr);
         } else {
             //variant lies within an exon but the part of the exon where it lies is not protein coding
             // so the variant lies within an exon that is part of a UTR
             if( isDbgLogging() ) {
                 getLogWriter().write("************************* Variant in Non-protein coding exon region ************************\n");
             }
-            insertVariantTranscript(variantId, transcriptRgdId, tflags.transcriptLocation, tflags.nearSpliceSite);
+            insertVariantTranscript(variantId, transcriptRgdId, tflags.transcriptLocation.toString(), tflags.nearSpliceSite);
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         }
     }
@@ -930,7 +927,6 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         int fullRefAASeqKey;
         int fullRefNucSeqKey;
-        SequenceDAO sequenceDAO = new SequenceDAO();
         VariantTranscript vt = new VariantTranscript();
         vt.setVariantId(variantId);
         vt.setTranscriptRgdId(transcriptRgdId);
@@ -945,68 +941,55 @@ public class VariantPostProcessing extends VariantProcessingBase {
         String assembly = MapManager.getInstance().getMap(mapKey).getUcscAssemblyId();
 
         if (fullRefAA != null) {
-            Sequence seq = new Sequence();
-            seq.setRgdId(transcriptRgdId);
-            seq.setSeqData(fullRefAA);
-            List<Sequence> aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa");
-            if (!aaseqs.isEmpty()) {
-                String s = aaseqs.get(0).getSeqData();
-                if (s.equalsIgnoreCase(fullRefAA)) {
-                    fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                } else {
-                    aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_" + assembly);
-                    if (aaseqs.isEmpty()) {
-                        aaseqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_aa_" + assembly + "_" + chr);
-                        if (aaseqs.isEmpty()) {
-                            seq.setSeqType("full_ref_aa_" + assembly);
-                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-                        } else fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                    } else {
-                        s = aaseqs.get(0).getSeqData();
-                        if (s.equalsIgnoreCase(fullRefAA)) {
-                            fullRefAASeqKey = aaseqs.get(0).getSeqKey();
-                        } else {
-                            seq.setSeqType("full_ref_aa_" + assembly + "_" + chr);
-                            fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-                        }
-                    }
-                }
-                vt.setFullRefAASeqKey(fullRefAASeqKey);
-            } else {
-                seq.setSeqType("full_ref_aa");
-                fullRefAASeqKey = sequenceDAO.insertSequence(seq);
-                vt.setFullRefAASeqKey(fullRefAASeqKey);
-            }
-
+            fullRefAASeqKey = getOrCreateSequenceKey(transcriptRgdId, fullRefAA, "full_ref_aa", assembly, chr);
+            vt.setFullRefAASeqKey(fullRefAASeqKey);
         }
         if (fullRefNuc != null) {
-            List<Sequence> nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc");
-            Sequence seq = new Sequence();
-            seq.setSeqData(fullRefNuc);
-            seq.setRgdId(transcriptRgdId);
-            if (nucSeqs.isEmpty()) {
-                seq.setSeqType("full_ref_nuc");
-                fullRefNucSeqKey = sequenceDAO.insertSequence(seq);
-                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
-            } else {
-                String s = nucSeqs.get(0).getSeqData();
-                if (s.equalsIgnoreCase(fullRefNuc)) {
-                    fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
-                } else {
-                    nucSeqs = sequenceDAO.getObjectSequences(transcriptRgdId, "full_ref_nuc_" + assembly);
-                    if (nucSeqs.isEmpty()) {
-                        seq.setSeqType("full_ref_nuc_" + assembly);
-                        fullRefNucSeqKey = sequenceDAO.insertSequence(seq); // broke here
-                    } else fullRefNucSeqKey = nucSeqs.get(0).getSeqKey();
-                }
-                vt.setFullRefNucSeqKey(fullRefNucSeqKey);
-            }
-
+            fullRefNucSeqKey = getOrCreateSequenceKey(transcriptRgdId, fullRefNuc, "full_ref_nuc", assembly, chr);
+            vt.setFullRefNucSeqKey(fullRefNucSeqKey);
         }
         vt.setFrameShift(frameShift);
         vt.setMapKey(mapKey);
         batch.addToBatch(vt);
 
+    }
+
+    /**
+     * Look up or create a sequence key for a transcript, using a cache to avoid repeated DB queries.
+     * Tries seq types in order: baseType, baseType_assembly, baseType_assembly_chr.
+     * If none found, inserts a new sequence with type baseType_assembly.
+     */
+    private int getOrCreateSequenceKey(int transcriptRgdId, String seqData, String baseType, String assembly, String chr) throws Exception {
+        // Check cache first - keyed by transcriptRgdId and baseType prefix (aa or nuc)
+        String cacheKey = transcriptRgdId + "|" + baseType;
+        Integer cachedKey = sequenceKeyCache.get(cacheKey);
+        if (cachedKey != null) {
+            return cachedKey;
+        }
+
+        // Try each seq type in order, matching the original fallback logic
+        String[] typesToTry = { baseType, baseType + "_" + assembly, baseType + "_" + assembly + "_" + chr };
+        for (String seqType : typesToTry) {
+            List<Sequence> seqs = sequenceDAO.getObjectSequences(transcriptRgdId, seqType);
+            if (!seqs.isEmpty()) {
+                String existingData = seqs.get(0).getSeqData();
+                if (existingData.equalsIgnoreCase(seqData)) {
+                    int seqKey = seqs.get(0).getSeqKey();
+                    sequenceKeyCache.put(cacheKey, seqKey);
+                    return seqKey;
+                }
+                // Data mismatch on base type - continue to assembly-specific types
+            }
+        }
+
+        // Not found with matching data - insert new sequence
+        Sequence seq = new Sequence();
+        seq.setRgdId(transcriptRgdId);
+        seq.setSeqData(seqData);
+        seq.setSeqType(baseType + "_" + assembly);
+        int seqKey = sequenceDAO.insertSequence(seq);
+        sequenceKeyCache.put(cacheKey, seqKey);
+        return seqKey;
     }
 
     void writeError(String msg, int mapKey) throws IOException {
@@ -1441,14 +1424,23 @@ public class VariantPostProcessing extends VariantProcessingBase {
         // process all transcripts 3UTS and 5UTR are top of the list of results but don't count on getting
         // them every time in results
         public String nearSpliceSite = "F";
-        public String transcriptLocation = null;
+        public StringJoiner transcriptLocation = new StringJoiner(",");
         public boolean inExon = false;
     }
 
     String getProperChunk(FastaParser fastaFile, int transcriptRgdId, String chr, int start, int stop, int mapKey) throws Exception{
         String newDnaChunk = "";
-        Transcript t = tdao.getTranscript(transcriptRgdId);
-        List<MapData> mapData = mdao.getMapData(t.getRgdId(), mapKey);
+
+        // Use cached transcript object and map data to avoid DB queries per exon per variant
+        Transcript t = transcriptObjectCache.computeIfAbsent(transcriptRgdId, id -> {
+            try { return tdao.getTranscript(id); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        });
+        List<MapData> mapData = transcriptMapDataCache.computeIfAbsent(transcriptRgdId, id -> {
+            try { return mdao.getMapData(t.getRgdId(), mapKey); }
+            catch (Exception e) { throw new RuntimeException(e); }
+        });
+
         if (mapData.isEmpty())
             return getDnaChunk(fastaFile, start,stop);
         for (MapData m : mapData) {

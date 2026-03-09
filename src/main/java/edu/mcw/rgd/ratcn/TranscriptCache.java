@@ -25,6 +25,8 @@ public class TranscriptCache {
     public int loadCache(int mapKey, String chromosome, DataSource ds) throws SQLException {
 
         entries.clear();
+        result.clear();
+        exonResult.clear();
 
         String sql = "SELECT transcript_rgd_id,gene_rgd_id,is_non_coding_ind FROM transcripts WHERE " +
                     "EXISTS(SELECT 1 FROM maps_data md, rgd_ids r WHERE md.rgd_id=transcript_rgd_id and r.rgd_id=transcript_rgd_id and r.OBJECT_STATUS = 'ACTIVE' AND md.map_key=? AND md.chromosome = ?)";
@@ -55,12 +57,9 @@ public class TranscriptCache {
             int transcriptRgdId = rs.getInt(1);
             int geneRgdId = rs.getInt(2);
             String isNonCoding = rs.getString(3);
-            List<TranscriptCacheEntry> list = new ArrayList<>();
             entries.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding));
-            if(result!= null && result.containsKey(geneRgdId))
-                list = result.get(geneRgdId);
-            list.add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding));
-            result.put(geneRgdId,list);
+            result.computeIfAbsent(geneRgdId, k -> new ArrayList<>())
+                  .add(new TranscriptCacheEntry(transcriptRgdId,geneRgdId,isNonCoding));
         }
         conn.close();
 

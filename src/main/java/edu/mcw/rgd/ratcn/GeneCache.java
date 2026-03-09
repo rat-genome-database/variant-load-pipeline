@@ -45,55 +45,50 @@ public class GeneCache {
         return entries.size();
     }
 
-    /** return list of rgd ids for genes that match a snv variant given its position
+    /** return list of rgd ids for genes that overlap a single position (SNVs)
      *
      * @param pos variant position
      * @return list of matching gene rgd ids, possibly empty
      */
     List<Integer> getGeneRgdIds(int pos) {
-        GeneCacheEntry key = new GeneCacheEntry(0, pos, pos);
-       /* int i = Collections.binarySearch(entries, key, new Comparator<GeneCacheEntry>() {
-            public int compare(GeneCacheEntry o1, GeneCacheEntry o2) {
-                System.out.println(o1.rgdId + "," + o2.rgdId);
-                if( o2.stopPos < o1.startPos ) //5982114 < 5977943
-                    return 1;
-                if( o1.stopPos < o2.startPos ) //5979905 < 5982114
-                    return -1;
+        return getGeneRgdIds(pos, pos);
+    }
 
-                return 0;
+    /** return list of rgd ids for genes that overlap the variant range [varStart, varStop]
+     *
+     * @param varStart variant start position
+     * @param varStop variant stop position
+     * @return list of matching gene rgd ids, possibly empty
+     */
+    List<Integer> getGeneRgdIds(int varStart, int varStop) {
+
+        List<Integer> results = new ArrayList<>();
+
+        // Binary search: find first entry where stopPos >= varStart
+        // (any gene ending before the variant starts cannot overlap)
+        // Entries are sorted by startPos, stopPos (from SQL ORDER BY)
+        int lo = 0, hi = entries.size() - 1;
+        int firstCandidate = entries.size();
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            if (entries.get(mid).stopPos >= varStart) {
+                firstCandidate = mid;
+                hi = mid - 1;
+            } else {
+                lo = mid + 1;
             }
-        });
+        }
 
-        if( i<0 )
-            return Collections.emptyList();
-*/
-        // there is a hit! add the hit to the results
-        List<Integer> results = new ArrayList<Integer>();
-        for(int i=0;i<entries.size();i++){
+        // Scan forward from firstCandidate; stop when gene starts after variant ends
+        for (int i = firstCandidate; i < entries.size(); i++) {
             GeneCacheEntry entry = entries.get(i);
-            if(key.startPos >= entry.startPos && key.stopPos <= entry.stopPos)
+            if (entry.startPos > varStop) break;
+            // Interval overlap: variant [varStart,varStop] overlaps gene [startPos,stopPos]
+            if (varStart <= entry.stopPos && varStop >= entry.startPos) {
                 results.add(entry.rgdId);
-            if (key.startPos <= entry.startPos && key.stopPos >= entry.startPos)
-                results.add(entry.rgdId);
-            if (key.startPos <= entry.stopPos && key.stopPos >= entry.stopPos)
-                results.add(entry.rgdId);
+            }
         }
- /*       results.add(entries.get(i).rgdId);
-        // look for possible other hits to the left of the hit index
-        for( int j=i-1; j>=0; j-- ) {
-            GeneCacheEntry e = entries.get(j);
-            if( e.stopPos < pos )
-                break;
-            results.add(e.rgdId);
-        }
-        // look for possible other hits to the right of the hit index
-        for( int j=i+1; j<entries.size(); j++ ) {
-            GeneCacheEntry e = entries.get(j);
-            if( e.startPos > pos )
-                break;
-            results.add(e.rgdId);
-        }
-        */
+
         return results;
     }
 
