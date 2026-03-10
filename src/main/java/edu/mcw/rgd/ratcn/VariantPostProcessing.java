@@ -662,7 +662,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
             if (Utils.stringsAreEqual(isFrameShift,"T")){
                 String varFromVarAAPos = rnaVarTranslated.substring(pos -1);
-                int stopCodon = varFromVarAAPos.indexOf("*");
+                int stopCodon = varFromVarAAPos.indexOf("*")+1;
                 String varFromVarAAToStop;
                 if (stopCodon > 0)
                     varFromVarAAToStop = varFromVarAAPos.substring(0,stopCodon);
