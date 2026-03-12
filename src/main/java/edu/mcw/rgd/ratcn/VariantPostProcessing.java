@@ -554,40 +554,38 @@ public class VariantPostProcessing extends VariantProcessingBase {
             }
 
             String transcriptErrorFound = "F";
-            if (mapKey==60) {
-                // Check for rna evenly divisable by 3 or log as error
+            // Check for rna evenly divisable by 3 or log as error
 
-                if (refDna.length() % 3 != 0) {
-                    writeError(variantId + ":" + transcriptRgdId + ":" + refDna.length() + ":" + ((new Date()).toString()) + ":TRIPLETERROR\n", mapKey);
-                    if (isDbgLogging()) {
-                        getLogWriter().write("************************* Warning in transcript rna length : see error_rga.txt file  ************************\n");
-                    }
-                    // Use this later to update VARIANT+TRANSCRIPT table with error
-                    transcriptErrorFound = "T";
+            if (refDna.length() % 3 != 0) {
+                writeError(variantId + ":" + transcriptRgdId + ":" + refDna.length() + ":" + ((new Date()).toString()) + ":TRIPLETERROR\n", mapKey);
+                if (isDbgLogging()) {
+                    getLogWriter().write("************************* Warning in transcript rna length : see error_rga.txt file  ************************\n");
                 }
-                // make it divisible by 3
-                if (refDna.length() % 3 != 0) {
-                    refDna.replace(0, refDna.length(), refDna.substring(0, refDna.length() - (refDna.length() % 3)));
-                    if (isDbgLogging()) {
-                        getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
-                    }
+                // Use this later to update VARIANT+TRANSCRIPT table with error
+                transcriptErrorFound = "T";
+            }
+            // make it divisible by 3
+            if (refDna.length() % 3 != 0) {
+                refDna.replace(0, refDna.length(), refDna.substring(0, refDna.length() - (refDna.length() % 3)));
+                if (isDbgLogging()) {
+                    getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
                 }
-                if (varDna.length() % 3 != 0) {
-                    varDna.replace(0, varDna.length(), varDna.substring(0, varDna.length() - (varDna.length() % 3)));
-                    if (isDbgLogging()) {
-                        getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
-                    }
+            }
+            if (varDna.length() % 3 != 0) {
+                varDna.replace(0, varDna.length(), varDna.substring(0, varDna.length() - (varDna.length() % 3)));
+                if (isDbgLogging()) {
+                    getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
                 }
+            }
 
-                // Now test to see if the variant was in an area eliminated by the divisable by 3 truncation process
-                if (variantRelPos < 1) {
-                    writeError(variantId + ":" + transcriptRgdId + ":" + refDna.length() + ":" + new Date().toString() + ":SKIPPED\n", mapKey);
-                    if (isDbgLogging()) {
-                        getLogWriter().write("************************* Error in transcript variant in trimmed area : skipping see error_rga.txt file  ************************\n");
-                    }
-                    return false; // return false to insert new row into VARIANT_TRANSCRIPT: at least variant location will be available
-
+            // Now test to see if the variant was in an area eliminated by the divisable by 3 truncation process
+            if (variantRelPos < 1) {
+                writeError(variantId + ":" + transcriptRgdId + ":" + refDna.length() + ":" + new Date().toString() + ":SKIPPED\n", mapKey);
+                if (isDbgLogging()) {
+                    getLogWriter().write("************************* Error in transcript variant in trimmed area : skipping see error_rga.txt file  ************************\n");
                 }
+                return false; // return false to insert new row into VARIANT_TRANSCRIPT: at least variant location will be available
+
             }
 
             if( isDbgLogging() ) {
@@ -617,6 +615,15 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         String rnaRefTranslated = translate(refDna);
         String rnaVarTranslated = translate(varDna);
+
+        // Prepare a truncated version of reference AA for DB storage (fullRefAA)
+        // Do NOT truncate rnaRefTranslated itself - it's needed at full length for the
+        // pos <= length check and substring operations below
+        String fullRefAAForDb = rnaRefTranslated;
+        int refStopIdx = rnaRefTranslated.indexOf("*");
+        if (refStopIdx >= 0) {
+            fullRefAAForDb = rnaRefTranslated.substring(0, refStopIdx + 1);
+        }
 
         if( isDbgLogging() ) {
             getLogWriter().write("RNA REF  \n" + rnaRefTranslated + "\n");
@@ -660,26 +667,25 @@ public class VariantPostProcessing extends VariantProcessingBase {
             // compute length difference between reference and variant nucleotides
 
 
-            if (Utils.stringsAreEqual(isFrameShift,"T")){
-                String varFromVarAAPos = rnaVarTranslated.substring(pos -1);
-                int stopCodon = varFromVarAAPos.indexOf("*")+1;
-                String varFromVarAAToStop;
-                if (stopCodon > 0)
-                    varFromVarAAToStop = varFromVarAAPos.substring(0,stopCodon);
-                else {
-                    varFromVarAAToStop = varFromVarAAPos;
-                }
-                if (varFromVarAAToStop.length()>4000)
-                    varFromVarAAToStop = varFromVarAAToStop.substring(0,4000);
-                insertVariantTranscript(variantId, transcriptRgdId, LRef, varFromVarAAToStop,
-                        synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
-                        rnaRefTranslated, refDna.toString(), isFrameShift, chr);
+            String varFromVarAAPos = rnaVarTranslated.substring(pos -1);
+            int stopCodon = varFromVarAAPos.indexOf("*")+1;
+            String varFromVarAAToStop;
+            if (varFromVarAAPos.startsWith("*")){
+                varFromVarAAToStop = "*";
             }
-            else {
-                insertVariantTranscript(variantId, transcriptRgdId, LRef, LVar,
-                        synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
-                        rnaRefTranslated, refDna.toString(), isFrameShift, chr);
+            else if (stopCodon > 0) {
+                varFromVarAAToStop = varFromVarAAPos.substring(0,stopCodon);
+            } else {
+                varFromVarAAToStop = varFromVarAAPos;
             }
+            if (varFromVarAAToStop.length()>4000) {
+                int remaining = varFromVarAAToStop.length() - 3900;
+                varFromVarAAToStop = varFromVarAAToStop.substring(0, 3900);
+                varFromVarAAToStop += " (sequence continues for "+remaining+")";
+            }
+            insertVariantTranscript(variantId, transcriptRgdId, LRef, varFromVarAAToStop,
+                        synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
+                        fullRefAAForDb, refDna.toString(), isFrameShift, chr);
 
             return true; // true denotes successful insert into VARIANT_TRANSCRIPT
         } else {

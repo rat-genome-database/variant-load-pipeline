@@ -64,27 +64,18 @@ public class GeneCache {
 
         List<Integer> results = new ArrayList<>();
 
-        // Binary search: find first entry where stopPos >= varStart
-        // (any gene ending before the variant starts cannot overlap)
-        // Entries are sorted by startPos, stopPos (from SQL ORDER BY)
-        int lo = 0, hi = entries.size() - 1;
-        int firstCandidate = entries.size();
-        while (lo <= hi) {
-            int mid = (lo + hi) >>> 1;
-            if (entries.get(mid).stopPos >= varStart) {
-                firstCandidate = mid;
-                hi = mid - 1;
-            } else {
-                lo = mid + 1;
-            }
-        }
-
-        // Scan forward from firstCandidate; stop when gene starts after variant ends
-        for (int i = firstCandidate; i < entries.size(); i++) {
+        // Linear scan with early termination using startPos sort order.
+        // Entries are sorted by startPos (from SQL ORDER BY start_pos, stop_pos).
+        // Note: binary search on stopPos is NOT valid here because stopPos is not
+        // monotonically ordered when sorted by startPos (a gene with small startPos
+        // can have a very large stopPos, while subsequent genes have smaller stopPos).
+        for (int i = 0; i < entries.size(); i++) {
             GeneCacheEntry entry = entries.get(i);
+            // Since entries are sorted by startPos, once startPos > varStop,
+            // no further entries can overlap
             if (entry.startPos > varStop) break;
             // Interval overlap: variant [varStart,varStop] overlaps gene [startPos,stopPos]
-            if (varStart <= entry.stopPos && varStop >= entry.startPos) {
+            if (entry.stopPos >= varStart) {
                 results.add(entry.rgdId);
             }
         }
