@@ -615,7 +615,8 @@ public class VariantPostProcessing extends VariantProcessingBase {
 
         String rnaRefTranslated = translate(refDna);
         String rnaVarTranslated = translate(varDna);
-
+        if (rnaRefTranslated.indexOf("*")!=rnaRefTranslated.lastIndexOf("*"))
+            transcriptErrorFound = "T";
         // Prepare a truncated version of reference AA for DB storage (fullRefAA)
         // Do NOT truncate rnaRefTranslated itself - it's needed at full length for the
         // pos <= length check and substring operations below
