@@ -34,6 +34,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
     private boolean dbgLogging;
     private boolean verifyIfInRgd = false;
     int mapKey = 0;
+    private BufferedWriter ppDebugLog;
     private GeneCache geneCache = new GeneCache();
     private TranscriptCache transcriptCache = new TranscriptCache();
     private TranscriptFeatureCache transcriptFeatureCache = new TranscriptFeatureCache();
@@ -113,6 +114,12 @@ public class VariantPostProcessing extends VariantProcessingBase {
         }
         getLogWriter().write(msg);
 
+        // Open post-processing debug log
+        String ppDebugFileName = getLogDir() + "varpp_debug_" + mapKey + ".log";
+        ppDebugLog = new BufferedWriter(new FileWriter(ppDebugFileName));
+        ppDebugLog.write("VARIANT_RGD_ID\tTRANSCRIPT_RGD_ID\tCHR\tREF_DNA\tVAR_DNA\tREF_DNA_LEN\tVAR_DNA_LEN\tREF_AA\tVAR_AA\tAA_POS\tNUC_POS");
+        ppDebugLog.newLine();
+
         // Log start
         insertSystemLogMessage("variantPostProcessing", "Started for Assembly " + mapKey);
 
@@ -139,6 +146,12 @@ public class VariantPostProcessing extends VariantProcessingBase {
         logStatusMsg(msg);
         getLogWriter().write(msg+"\n");
         getLogWriter().close();
+
+        // Close post-processing debug log
+        if (ppDebugLog != null) {
+            ppDebugLog.flush();
+            ppDebugLog.close();
+        }
 
         System.out.println();
         getDataSource().getConnection().close();
@@ -684,6 +697,16 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 varFromVarAAToStop = varFromVarAAToStop.substring(0, 3900);
                 varFromVarAAToStop += " (sequence continues for "+remaining+")";
             }
+            // Write to post-processing debug log
+            if (ppDebugLog != null) {
+                ppDebugLog.write(variantId + "\t" + transcriptRgdId + "\t" + chr + "\t"
+                        + refDna + "\t" + varDna + "\t"
+                        + refDna.length() + "\t" + varDna.length() + "\t"
+                        + rnaRefTranslated + "\t" + rnaVarTranslated + "\t"
+                        + pos + "\t" + variantRelPos);
+                ppDebugLog.newLine();
+            }
+
             insertVariantTranscript(variantId, transcriptRgdId, LRef, varFromVarAAToStop,
                         synStatus, transcriptLocation, nearSpliceSite, pos, variantRelPos, transcriptErrorFound,
                         fullRefAAForDb, refDna.toString(), isFrameShift, chr);
