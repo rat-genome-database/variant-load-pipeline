@@ -578,18 +578,18 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 transcriptErrorFound = "T";
             }
             // make it divisible by 3
-            if (refDna.length() % 3 != 0) {
-                refDna.replace(0, refDna.length(), refDna.substring(0, refDna.length() - (refDna.length() % 3)));
-                if (isDbgLogging()) {
-                    getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
-                }
-            }
-            if (varDna.length() % 3 != 0) {
-                varDna.replace(0, varDna.length(), varDna.substring(0, varDna.length() - (varDna.length() % 3)));
-                if (isDbgLogging()) {
-                    getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
-                }
-            }
+//            if (refDna.length() % 3 != 0) {
+//                refDna.replace(0, refDna.length(), refDna.substring(0, refDna.length() - (refDna.length() % 3)));
+//                if (isDbgLogging()) {
+//                    getLogWriter().write(" RefDna fixed div 3 length =  : " + refDna.length() + " mod " + (refDna.length() % 3) + "\n");
+//                }
+//            }
+//            if (varDna.length() % 3 != 0) {
+//                varDna.replace(0, varDna.length(), varDna.substring(0, varDna.length() - (varDna.length() % 3)));
+//                if (isDbgLogging()) {
+//                    getLogWriter().write(" VarDna fixed div 3 length =  : " + varDna.length() + " mod " + (varDna.length() % 3) + "\n");
+//                }
+//            }
 
             // Now test to see if the variant was in an area eliminated by the divisable by 3 truncation process
             if (variantRelPos < 1) {
