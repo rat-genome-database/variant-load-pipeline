@@ -145,18 +145,20 @@ public class Polyphen extends VariantProcessingBase {
         // this query hint forces oracle to use indexes on VARIANT_TRANSCRIPT table
         // (many times it was using full scans for unknown reasons)
 
-       String sql = "SELECT /*+ INDEX(vt) */ \n" +
-        "vm.start_pos, g.gene_symbol as region_name, t.gene_rgd_id, \n" +
-        "v.ref_nuc, v.var_nuc, vt.ref_aa, vt.var_aa, vt.full_ref_aa_seq_key, vt.full_ref_aa_pos, \n" +
-        "t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.rgd_id\n" +
-        "FROM variant v inner join variant_map_data vm on v.rgd_id = vm.rgd_id AND vm.map_key = ? AND vm.chromosome = ? \n" +
-        "inner join variant_transcript vt on v.rgd_id = vt.variant_rgd_id " +
-        "inner join transcripts t on t.transcript_rgd_id=vt.transcript_rgd_id " +
-        "inner join genes g on t.gene_rgd_id=g.rgd_id " +
-        "WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*' \n" +
-        "AND v.ref_nuc IN ('A', 'G', 'C', 'T') \n" +
-        "AND v.var_nuc IN ('A', 'G', 'C', 'T') \n" +
-        "AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL \n";
+       String sql = """
+        SELECT /*+ INDEX(vt) */
+          vm.start_pos, g.gene_symbol as region_name, t.gene_rgd_id,
+          v.ref_nuc, v.var_nuc, vt.ref_aa, vt.var_aa, vt.full_ref_aa_seq_key, vt.full_ref_aa_pos,
+          t.acc_id, t.protein_acc_id, vt.transcript_rgd_id, v.rgd_id
+        FROM variant v inner join variant_map_data vm on v.rgd_id = vm.rgd_id AND vm.map_key = ? AND vm.chromosome = ?
+          inner join variant_transcript vt on v.rgd_id = vt.variant_rgd_id
+          inner join transcripts t on t.transcript_rgd_id=vt.transcript_rgd_id
+          inner join genes g on t.gene_rgd_id=g.rgd_id
+        WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*'
+          AND v.ref_nuc IN ('A', 'G', 'C', 'T')
+          AND v.var_nuc IN ('A', 'G', 'C', 'T')
+          AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL
+        """;
 
         Connection conn = this.getVariantDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(sql);
@@ -174,7 +176,14 @@ public class Polyphen extends VariantProcessingBase {
             //String refNuc = rs.getString(5);
             //String varNuc = rs.getString(6);
             String refAA = rs.getString(6);
+
             String varAA = rs.getString(7);
+            // as of 2026 for snps, it is no longer a variant amino acid; it is a whole protein sequence starting at that
+            // variant to the end
+            if( varAA!=null && varAA.length()>1 ) {
+                varAA = varAA.substring(0, 1);
+            }
+
             int fullRefAASeqKey = rs.getInt(8);
             int fullRefAaaPos = rs.getInt(9);
             //String nucAccId = rs.getString(11);
