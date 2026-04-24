@@ -154,7 +154,7 @@ public class Polyphen extends VariantProcessingBase {
           inner join variant_transcript vt on v.rgd_id = vt.variant_rgd_id
           inner join transcripts t on t.transcript_rgd_id=vt.transcript_rgd_id
           inner join genes g on t.gene_rgd_id=g.rgd_id
-        WHERE vt.ref_aa <> vt.var_aa  AND  vt.var_aa<>'*'
+        WHERE vt.var_aa<>'*'
           AND v.ref_nuc IN ('A', 'G', 'C', 'T')
           AND v.var_nuc IN ('A', 'G', 'C', 'T')
           AND vt.ref_aa IS NOT NULL  AND  vt.var_aa IS NOT NULL
@@ -168,7 +168,7 @@ public class Polyphen extends VariantProcessingBase {
         int lineNr = 0;
         String line;
         while( rs.next() ) {
-            lineNr++;
+
             //long variantTranscriptId = rs.getLong(1);
             int startPos = rs.getInt(1);
             String regionName = rs.getString(2);
@@ -180,9 +180,13 @@ public class Polyphen extends VariantProcessingBase {
             String varAA = rs.getString(7);
             // as of 2026 for snps, it is no longer a variant amino acid; it is a whole protein sequence starting at that
             // variant to the end
-            if( varAA!=null && varAA.length()>1 ) {
+            if( varAA.length()>1 ) {
                 varAA = varAA.substring(0, 1);
             }
+            if( refAA.equals(varAA) ) {
+                continue;
+            }
+            lineNr++;
 
             int fullRefAASeqKey = rs.getInt(8);
             int fullRefAaaPos = rs.getInt(9);
@@ -273,21 +277,7 @@ public class Polyphen extends VariantProcessingBase {
 
                     // RefSeq protein part to the left of the mutation point must match the translated part
                     String refSeqLeftPart;
-                    String translatedLeftPart;
-                    try {
-                        translatedLeftPart = fullRefAA.substring(0, fullRefAaaPos-1);
-                    } catch(IndexOutOfBoundsException e) {
-                        line = "translated left part error!\n" +
-                                "    transcript_rgd_id = " + transcriptRgdId + "\n" +
-                                "    protein_acc_id = " + proteinAccId + "\n" +
-                                "    ref_aa_pos = " + fullRefAaaPos + "\n" +
-                                "    fullRefAA = " + fullRefAA + "\n";
-                        errorFile.append(line);
-                        refSeqProteinLengthErrors++;
-                        this.getLogWriter().append("***translated left part error***\n" + line);
-                        continue;
-                    }
-
+                    String translatedLeftPart = fullRefAA.substring(0, fullRefAaaPos-1);
                     try {
                         refSeqLeftPart = seq.getSeqData().substring(0, fullRefAaaPos-1);
                     } catch(IndexOutOfBoundsException e) {
