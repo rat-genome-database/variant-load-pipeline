@@ -264,7 +264,21 @@ public class Polyphen extends VariantProcessingBase {
 
                     // RefSeq protein part to the left of the mutation point must match the translated part
                     String refSeqLeftPart;
-                    String translatedLeftPart = fullRefAA.substring(0, fullRefAaaPos-1);
+                    String translatedLeftPart;
+                    try {
+                        translatedLeftPart = fullRefAA.substring(0, fullRefAaaPos-1);
+                    } catch(IndexOutOfBoundsException e) {
+                        line = "translated left part error!\n" +
+                                "    transcript_rgd_id = " + transcriptRgdId + "\n" +
+                                "    protein_acc_id = " + proteinAccId + "\n" +
+                                "    ref_aa_pos = " + fullRefAaaPos + "\n" +
+                                "    fullRefAA = " + fullRefAA + "\n";
+                        errorFile.append(line);
+                        refSeqProteinLengthErrors++;
+                        this.getLogWriter().append("***translated left part error***\n" + line);
+                        continue;
+                    }
+
                     try {
                         refSeqLeftPart = seq.getSeqData().substring(0, fullRefAaaPos-1);
                     } catch(IndexOutOfBoundsException e) {
