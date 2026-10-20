@@ -1055,7 +1055,7 @@ public class VariantPostProcessing extends VariantProcessingBase {
                 UNION ALL
                 SELECT v.rgd_id,vmd.START_POS,vmd.END_POS,v.var_nuc, v.ref_nuc
                 FROM variant_ext v, variant_map_data vmd, RGD_IDS r where v.rgd_id=vmd.rgd_id and r.rgd_id=v.rgd_id and r.OBJECT_STATUS='ACTIVE' and vmd.map_key = ? and vmd.chromosome = ?
-                )""";
+                ) all_variants""";
         psVariant = getVariantDataSource().getConnection().prepareStatement(sql);
 
 

@@ -81,7 +81,7 @@ public class ClinVar2Vcf {
             FROM clinvar v,genomic_elements ge
             WHERE v.rgd_id=ge.rgd_id
              AND object_type in('single nucleotide variant','deletion','insertion','duplication','microsatellite')
-            order by dbms_random.value
+            order by random()
             """);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {

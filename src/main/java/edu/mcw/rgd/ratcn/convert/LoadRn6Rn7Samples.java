@@ -249,7 +249,7 @@ public class LoadRn6Rn7Samples {
             String fname = f.getName();
             if( f.isFile() && fname.endsWith(suffix) ) {
                 String sampleName = fname.substring(0, fname.length()-suffix.length());
-                String sql = "INSERT INTO sample (sample_id,analysis_name,description,patient_id,gender,map_key,analysis_time) VALUES(?,?,?,?,?,?,SYSDATE)";
+                String sql = "INSERT INTO sample (sample_id,analysis_name,description,patient_id,gender,map_key,analysis_time) VALUES(?,?,?,?,?,?,LOCALTIMESTAMP)";
                 PreparedStatement ps = conn.prepareStatement(sql);
                 ps.setInt(1, sampleId);
                 ps.setString(2, sampleName);

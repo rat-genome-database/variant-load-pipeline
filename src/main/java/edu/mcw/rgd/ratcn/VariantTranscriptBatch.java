@@ -117,8 +117,9 @@ public class VariantTranscriptBatch {
     }
 
     /**
-     * Use Oracle MERGE to insert new records or update existing ones in a single operation.
+     * Use MERGE to insert new records or update existing ones in a single operation.
      * This eliminates the need for preloading and comparing records in Java.
+     * Needs postgres 15 or later, which is where MERGE landed.
      */
     void mergeRows() throws Exception {
         if (batch.isEmpty())
@@ -129,7 +130,7 @@ public class VariantTranscriptBatch {
             "USING (SELECT ? AS var_id, ? AS tr_id, ? AS ref_aa, ? AS var_aa, ? AS syn_status, " +
             "? AS location_name, ? AS near_splice_site, ? AS aa_pos, ? AS nuc_pos, " +
             "? AS triplet_error, ? AS aa_seq_key, ? AS nuc_seq_key, ? AS frameshift, ? AS map_key " +
-            "FROM dual) source " +
+            ") source " +
             "ON (target.VARIANT_RGD_ID = source.var_id " +
             "AND target.TRANSCRIPT_RGD_ID = source.tr_id " +
             "AND target.MAP_KEY = source.map_key) " +

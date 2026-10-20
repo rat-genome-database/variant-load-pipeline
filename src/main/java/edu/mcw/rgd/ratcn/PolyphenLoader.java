@@ -255,8 +255,8 @@ String polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_rgd_id,gene_symb
                 "transcript_rgd_id, protein_status, o_aa1, o_aa2, pph2_class, pph2_prob, "+
                 "pph2_fpr, pph2_tpr, pph2_fdr, msav, transv, cpg, min_djxn, pfam_hit, id_pmax, id_psnp, id_qmin," +
                 "cod_pos, creation_date) "+
-                "VALUES(POLYPHEN_SEQ.NEXTVAL,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,"+
-                "?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,SYSDATE)";
+                "VALUES(nextval('polyphen_seq'),?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,"+
+                "?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,LOCALTIMESTAMP)";
         BatchSqlUpdate su = new BatchSqlUpdate(this.getVariantDataSource(), polyphenSql, new int[]{Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,

@@ -73,7 +73,7 @@ public class DbSnp2Vcf {
         PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM db_snp \n" +
                         "WHERE map_key=? AND source=? " +
-                        "ORDER BY dbms_random.value");
+                        "ORDER BY random()");
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {
             linesProcessed++;
@@ -398,7 +398,8 @@ public class DbSnp2Vcf {
         Connection conn = getDataSource().getConnection();
         PreparedStatement ps = conn.prepareStatement(
                 "SELECT hgvs_name,hgvs_name_type FROM hgvs_names WHERE rgd_id=? ORDER BY "+
-        "DECODE(hgvs_name_type,'genomic_refseqgene',1,'coding_refseq',2,'genomic_toplevel',3,'coding',4,5)");
+        "CASE hgvs_name_type WHEN 'genomic_refseqgene' THEN 1 WHEN 'coding_refseq' THEN 2 "+
+        "WHEN 'genomic_toplevel' THEN 3 WHEN 'coding' THEN 4 ELSE 5 END");
         ps.setInt(1, r.varRgdId);
         ResultSet rs = ps.executeQuery();
         while( rs.next() ) {

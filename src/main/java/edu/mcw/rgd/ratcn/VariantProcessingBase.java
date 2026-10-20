@@ -63,7 +63,7 @@ public class VariantProcessingBase {
 
         String sql = "insert into SYSTEM_LOG "+
             "(SYSTEM_LOG_ID, SYSTEM_COMPONENT, LOG_LEVEL, EVENT_DATE, STRING_VALUE, FLOAT_VALUE) "+
-            "values (SYSTEM_LOG_SEQ.NEXTVAL, ?,  'Info', SYSDATE, ?, 0) ";
+            "values (nextval('system_log_seq'), ?,  'Info', LOCALTIMESTAMP, ?, 0) ";
 
         SqlUpdate su = new SqlUpdate(this.getDataSource(), sql);
         su.declareParameter(new SqlParameter(Types.VARCHAR));
@@ -393,7 +393,7 @@ public class VariantProcessingBase {
 
     public void insertVariantRgdIds2(List<VariantMapData> vmds) throws Exception{
         BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
-                "INSERT INTO VARIANT_RGD_IDS (rgd_id) select ? from dual where not exists(select * from VARIANT_RGD_IDS where rgd_id=?)", new int[]{Types.INTEGER,Types.INTEGER},5000);
+                "INSERT INTO VARIANT_RGD_IDS (rgd_id) select ? where not exists(select * from VARIANT_RGD_IDS where rgd_id=?)", new int[]{Types.INTEGER,Types.INTEGER},5000);
         sql.compile();
         for (VariantMapData vmd : vmds){
             long rgdId = vmd.getId();

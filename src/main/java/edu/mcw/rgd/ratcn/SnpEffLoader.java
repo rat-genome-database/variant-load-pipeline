@@ -166,7 +166,7 @@ public class SnpEffLoader {
 
         String sql = "INSERT INTO snp_eff (snp_eff_id,variant_id,allele,effect,impact,gene_symbol,gene_id,feature,"+
                 "feature_id,biotype,rank,hgvs_c,hgvs_p,cdna_pos_len,cds_pos_len,aa_pos_len,distance,errors) "+
-                "VALUES(snp_eff_seq.NEXTVAL,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?)";
+                "VALUES(nextval('snp_eff_seq'),?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?)";
         dao.update(sql, varId, snpEff.allele, snpEff.effect, snpEff.impact, snpEff.geneSymbol, snpEff.geneId,
                 snpEff.feature, snpEff.featureId, snpEff.bioType, snpEff.rank, snpEff.hgvsC, snpEff.hgvsP,
                 snpEff.cdnaPosLen, snpEff.cdsPosLen, snpEff.aaPosLen, snpEff.distance, snpEff.errors);
