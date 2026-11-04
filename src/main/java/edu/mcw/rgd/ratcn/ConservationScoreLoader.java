@@ -175,7 +175,7 @@ public class ConservationScoreLoader {
                 BATCH_SIZE);
         su.compile();
         for( Object[] row: rowCache ) {
-            su.update(row[0], row[1], row[2]);
+            su.update(VariantProcessingBase.blanksToNull(row));
         }
         dao.executeBatch(su);
 

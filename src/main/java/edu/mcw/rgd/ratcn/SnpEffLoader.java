@@ -174,7 +174,8 @@ public class SnpEffLoader {
     }
 
     String nullIfEmpty(String s) {
-        return s.isEmpty() ? null : s;
+        // delegate so blank handling stays consistent across the pipeline; also tolerates null input
+        return VariantProcessingBase.nullIfEmpty(s);
     }
 
     public void setVersion(String version) {

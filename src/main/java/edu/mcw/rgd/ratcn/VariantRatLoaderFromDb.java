@@ -318,7 +318,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
         for( VariantMapData v: mapsData) {
             long id = v.getId();
-            sql1.update(id, v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
+            sql1.update(id, nullIfEmpty(v.getReferenceNucleotide()), nullIfEmpty(v.getVariantType()), nullIfEmpty(v.getVariantNucleotide()), nullIfEmpty(v.getRsId()), nullIfEmpty(v.getClinvarId()), v.getSpeciesTypeKey());
 
         }
         sql1.flush();
@@ -336,7 +336,7 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
 
         for( VariantMapData v: mapsData) {
             long id = v.getId();
-            sql2.update(id, v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
+            sql2.update(id, nullIfEmpty(v.getChromosome()), v.getStartPos(), v.getEndPos(), nullIfEmpty(v.getPaddingBase()), nullIfEmpty(v.getGenicStatus()), v.getMapKey());
         }
         sql2.flush();
     }
@@ -361,8 +361,8 @@ public class VariantRatLoaderFromDb extends VariantProcessingBase {
                         Types.VARCHAR,Types.VARCHAR, Types.INTEGER,Types.VARCHAR, Types.INTEGER}, 10000);
         bsu.compile();
         for(VariantSampleDetail v: sampleData ) {
-            bsu.update(v.getId(), v.getSource(), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),v.getZygosityStatus(),v.getZygosityPercentRead(),
-                    v.getZygosityPossibleError(),v.getZygosityRefAllele(),v.getZygosityNumberAllele(),v.getZygosityInPseudo(),v.getQualityScore());
+            bsu.update(v.getId(), nullIfEmpty(v.getSource()), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),nullIfEmpty(v.getZygosityStatus()),v.getZygosityPercentRead(),
+                    nullIfEmpty(v.getZygosityPossibleError()),nullIfEmpty(v.getZygosityRefAllele()),v.getZygosityNumberAllele(),nullIfEmpty(v.getZygosityInPseudo()),v.getQualityScore());
         }
         bsu.flush();
         // compute nr of rows affected

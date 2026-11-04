@@ -69,7 +69,7 @@ public class VariantProcessingBase {
         su.declareParameter(new SqlParameter(Types.VARCHAR));
         su.declareParameter(new SqlParameter(Types.VARCHAR));
         su.compile();
-        su.update(new Object[]{msg, process});
+        su.update(blanksToNull(msg, process));
     }
 
     List<String> getIndexesForTable(String tableName, String indexStatus) throws Exception {
@@ -220,6 +220,31 @@ public class VariantProcessingBase {
         return q.execute(speciesKey);
     }
 
+    /**
+     * Oracle stored '' as NULL on insert; Postgres keeps it as a distinct empty string, which the
+     * variant_*_nonempty_ck check constraints reject. A blank is never a meaningful value for the
+     * nucleotide/status columns these inserts bind -- a deletion has no var_nuc, an insertion has no
+     * ref_nuc -- so map blanks back to NULL to preserve the original behavior. Whitespace-only counts
+     * as blank because the zygosity columns are CHAR, and Postgres ignores trailing blanks there, so
+     * a value of " " trips the same constraint. Non-blank values are passed through untouched.
+     */
+    public static String nullIfEmpty(String s) {
+        return s==null || s.trim().isEmpty() ? null : s;
+    }
+
+    /**
+     * Same rule as nullIfEmpty, applied across a whole parameter list. Used for the wide inserts
+     * (polyphen, snp_eff) where wrapping each of several dozen bind values individually would be
+     * unreadable and easy to get wrong. Non-String values are passed through untouched.
+     */
+    public static Object[] blanksToNull(Object... params) {
+        Object[] out = new Object[params.length]; // copy: callers may pass an array they still own
+        for( int i=0; i<params.length; i++ ) {
+            out[i] = params[i] instanceof String ? nullIfEmpty((String)params[i]) : params[i];
+        }
+        return out;
+    }
+
     public void insertVariants(List<VariantMapData> mapsData)  throws Exception{
         BatchSqlUpdate sql1 = new BatchSqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (\n" +
@@ -230,7 +255,7 @@ public class VariantProcessingBase {
         sql1.compile();
         for( VariantMapData v: mapsData) {
             long id = v.getId();
-            sql1.update(id, v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
+            sql1.update(id, nullIfEmpty(v.getReferenceNucleotide()), nullIfEmpty(v.getVariantType()), nullIfEmpty(v.getVariantNucleotide()), nullIfEmpty(v.getRsId()), nullIfEmpty(v.getClinvarId()), v.getSpeciesTypeKey());
 
         }
         sql1.flush();
@@ -245,7 +270,7 @@ public class VariantProcessingBase {
         sql2.compile();
         for( VariantMapData v: mapsData) {
             long id = v.getId();
-            sql2.update(id, v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
+            sql2.update(id, nullIfEmpty(v.getChromosome()), v.getStartPos(), v.getEndPos(), nullIfEmpty(v.getPaddingBase()), nullIfEmpty(v.getGenicStatus()), v.getMapKey());
         }
         sql2.flush();
     }
@@ -260,8 +285,8 @@ public class VariantProcessingBase {
                         Types.VARCHAR,Types.VARCHAR, Types.INTEGER,Types.VARCHAR, Types.INTEGER}, 10000);
         bsu.compile();
         for(VariantSampleDetail v: sampleData ) {
-            bsu.update(v.getId(), v.getSource(), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),v.getZygosityStatus(),v.getZygosityPercentRead(),
-                    v.getZygosityPossibleError(),v.getZygosityRefAllele(),v.getZygosityNumberAllele(),v.getZygosityInPseudo(),v.getQualityScore());
+            bsu.update(v.getId(), nullIfEmpty(v.getSource()), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),nullIfEmpty(v.getZygosityStatus()),v.getZygosityPercentRead(),
+                    nullIfEmpty(v.getZygosityPossibleError()),nullIfEmpty(v.getZygosityRefAllele()),v.getZygosityNumberAllele(),nullIfEmpty(v.getZygosityInPseudo()),v.getQualityScore());
         }
         bsu.flush();
         // compute nr of rows affected
@@ -280,7 +305,7 @@ public class VariantProcessingBase {
                 new int[]{Types.VARCHAR,Types.INTEGER, Types.INTEGER}, 10000);
         bsu.compile();
         for(VariantSampleDetail v: sampleData ) {
-            bsu.update(v.getZygosityPossibleError(),v.getId(), v.getSampleId());
+            bsu.update(nullIfEmpty(v.getZygosityPossibleError()),v.getId(), v.getSampleId());
         }
         bsu.flush();
         // compute nr of rows affected
@@ -299,7 +324,7 @@ public class VariantProcessingBase {
                         "VALUES (?,?,?,?,?,?,?)",
                 new int[]{Types.INTEGER,Types.VARCHAR,Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,Types.INTEGER});
         sql1.compile();
-        sql1.update(v.getId(), v.getReferenceNucleotide(), v.getVariantType(), v.getVariantNucleotide(), v.getRsId(), v.getClinvarId(), v.getSpeciesTypeKey());
+        sql1.update(v.getId(), nullIfEmpty(v.getReferenceNucleotide()), nullIfEmpty(v.getVariantType()), nullIfEmpty(v.getVariantNucleotide()), nullIfEmpty(v.getRsId()), nullIfEmpty(v.getClinvarId()), v.getSpeciesTypeKey());
     }
 
     public void insertVariantMapData(VariantMapData v)  throws Exception{
@@ -309,7 +334,7 @@ public class VariantProcessingBase {
                         "VALUES (?,?,?,?,?,?,?)",
                 new int[]{Types.INTEGER,Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR,Types.VARCHAR, Types.INTEGER});
         sql2.compile();
-        sql2.update(v.getId(), v.getChromosome(), v.getStartPos(), v.getEndPos(), v.getPaddingBase(), v.getGenicStatus(), v.getMapKey());
+        sql2.update(v.getId(), nullIfEmpty(v.getChromosome()), v.getStartPos(), v.getEndPos(), nullIfEmpty(v.getPaddingBase()), nullIfEmpty(v.getGenicStatus()), v.getMapKey());
     }
 
     public void insertVariantSample(VariantSampleDetail v) throws Exception {
@@ -322,8 +347,8 @@ public class VariantProcessingBase {
                 new int[]{Types.INTEGER,Types.VARCHAR,Types.INTEGER, Types.INTEGER, Types.INTEGER,Types.VARCHAR, Types.INTEGER,
                         Types.VARCHAR,Types.VARCHAR, Types.INTEGER,Types.VARCHAR, Types.INTEGER});
         bsu.compile();
-        bsu.update(v.getId(), v.getSource(), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),v.getZygosityStatus(),v.getZygosityPercentRead(),
-                   v.getZygosityPossibleError(),v.getZygosityRefAllele(),v.getZygosityNumberAllele(),v.getZygosityInPseudo(),v.getQualityScore());
+        bsu.update(v.getId(), nullIfEmpty(v.getSource()), v.getSampleId(),v.getDepth(),v.getVariantFrequency(),nullIfEmpty(v.getZygosityStatus()),v.getZygosityPercentRead(),
+                   nullIfEmpty(v.getZygosityPossibleError()),nullIfEmpty(v.getZygosityRefAllele()),v.getZygosityNumberAllele(),nullIfEmpty(v.getZygosityInPseudo()),v.getQualityScore());
     }
 
     public List<VariantSampleDetail> getVariantSampleDetail(int rgdId, int sampleId) throws Exception{
@@ -358,7 +383,7 @@ public class VariantProcessingBase {
                 rgdIds.clear();
                 for(GenomicElement g:elementList) {
                     if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
-                        su.update(g.getSymbol(),g.getRgdId());
+                        su.update(nullIfEmpty(g.getSymbol()),g.getRgdId());
                     }
                 }
                 su.flush();
@@ -370,7 +395,7 @@ public class VariantProcessingBase {
         rgdIds.clear();
         for(GenomicElement g:elementList) {
             if (g.getSource() != null && g.getSource().equalsIgnoreCase("CLINVAR")) {
-                su.update(g.getSymbol(),g.getRgdId());
+                su.update(nullIfEmpty(g.getSymbol()),g.getRgdId());
             }
         }
         su.flush();

@@ -59,7 +59,7 @@ public class UpdateVariantStatus {
                 count);
         su.compile();
         for( int i=0; i<count; i++ ) {
-            su.update(genicStatus, variantIds[i]);
+            su.update(VariantProcessingBase.nullIfEmpty(genicStatus), variantIds[i]);
         }
         executeBatch(su);
     }

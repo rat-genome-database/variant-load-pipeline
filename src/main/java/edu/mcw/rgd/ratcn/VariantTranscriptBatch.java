@@ -98,17 +98,17 @@ public class VariantTranscriptBatch {
             bsu.update(
                 vt.getVariantId(),
                 vt.getTranscriptRgdId(),
-                vt.getRefAA(),
-                vt.getVarAA(),
-                vt.getSynStatus(),
-                vt.getLocationName(),
-                vt.getNearSpliceSite(),
+                VariantProcessingBase.nullIfEmpty(vt.getRefAA()),
+                VariantProcessingBase.nullIfEmpty(vt.getVarAA()),
+                VariantProcessingBase.nullIfEmpty(vt.getSynStatus()),
+                VariantProcessingBase.nullIfEmpty(vt.getLocationName()),
+                VariantProcessingBase.nullIfEmpty(vt.getNearSpliceSite()),
                 vt.getFullRefAAPos(),
                 vt.getFullRefNucPos(),
-                vt.getTripletError(),
+                VariantProcessingBase.nullIfEmpty(vt.getTripletError()),
                 vt.getFullRefAASeqKey(),
                 vt.getFullRefNucSeqKey(),
-                vt.getFrameShift(),
+                VariantProcessingBase.nullIfEmpty(vt.getFrameShift()),
                 vt.getMapKey()
             );
         }
@@ -173,17 +173,17 @@ public class VariantTranscriptBatch {
             bsu.update(
                 vt.getVariantId(),
                 vt.getTranscriptRgdId(),
-                vt.getRefAA(),
-                vt.getVarAA(),
-                vt.getSynStatus(),
-                vt.getLocationName(),
-                vt.getNearSpliceSite(),
+                VariantProcessingBase.nullIfEmpty(vt.getRefAA()),
+                VariantProcessingBase.nullIfEmpty(vt.getVarAA()),
+                VariantProcessingBase.nullIfEmpty(vt.getSynStatus()),
+                VariantProcessingBase.nullIfEmpty(vt.getLocationName()),
+                VariantProcessingBase.nullIfEmpty(vt.getNearSpliceSite()),
                 vt.getFullRefAAPos(),
                 vt.getFullRefNucPos(),
-                vt.getTripletError(),
+                VariantProcessingBase.nullIfEmpty(vt.getTripletError()),
                 vt.getFullRefAASeqKey() == 0 ? null : vt.getFullRefAASeqKey(),
                 vt.getFullRefNucSeqKey() == 0 ? null : vt.getFullRefNucSeqKey(),
-                vt.getFrameShift(),
+                VariantProcessingBase.nullIfEmpty(vt.getFrameShift()),
                 vt.getMapKey()
             );
         }

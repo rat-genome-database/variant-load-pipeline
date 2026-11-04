@@ -269,14 +269,14 @@ String polyphenSql = "INSERT INTO polyphen (polyphen_id,variant_rgd_id,gene_symb
 
         su.compile();
         for(PolyphenRecord p: polyphenRecordList) {
-            su.update(p.getVariantId(), p.getGeneSymbol(), p.getRefseqProteinAccId(), p.getVarPos(),p.getRefAA(), p.getVarAA(), p.getPrediction(),
+            su.update(blanksToNull(p.getVariantId(), p.getGeneSymbol(), p.getRefseqProteinAccId(), p.getVarPos(),p.getRefAA(), p.getVarAA(), p.getPrediction(),
                     p.getBasedOn(), p.getEffect(), p.getSite(), p.getRegion(), p.getPhat(),p.getScore1(), p.getScore2(), p.getScoreDelta(),p.getNumObserv(),
                     p.getNumStructInit(), p.getNumStructFilt(), p.getPdbId(), p.getResNum(), p.getChainId(), p.getAliIde(), p.getAliLen(),p.getAccNormed(),
                     p.getSecStr(), p.getMapRegion(), p.getDeltaVolume(), p.getDeltaProp(), p.getbFact(), p.getNumHBonds(), p.getHetContAveNum(), p.getHetContMinDist(),
                     p.getInterContAveNum(), p.getInterContMinDist(), p.getSitesContAveNum(), p.getSitesContMinDist(), p.getUniprotAccId(), p.getStrand(),
                     p.getTranscriptRgdId(), p.getProteinStatus(), p.getoAA1(), p.getoAA2(), p.getPph2Class(), p.getPph2Prob(),
                     p.getPph2Fpr(), p.getPph2Tpr(),p.getPph2Fdr(),p.getMsav(),p.getTransv(), p.getCpg(), p.getMinDjxn(), p.getPfamHit(), p.getIdPmax(),
-                    p.getIdPsnp(), p.getIdQmin(), p.getCodPos());
+                    p.getIdPsnp(), p.getIdQmin(), p.getCodPos()));
 
         }
 

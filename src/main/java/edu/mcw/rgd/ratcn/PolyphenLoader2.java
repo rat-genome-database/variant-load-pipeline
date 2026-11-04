@@ -236,19 +236,19 @@ public class PolyphenLoader2 extends VariantProcessingBase {
             Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR});
-        su.update(variantId, geneSymbol, proteinId, position, aa1, aa2, prediction, basis, effect, site, region, phat,
+        su.update(blanksToNull(variantId, geneSymbol, proteinId, position, aa1, aa2, prediction, basis, effect, site, region, phat,
             score1, score2, scoreDelta, numObserv, numStructInit, numStructFilt, pdbId, resNum, chainId, aliIde, aliLen,
             accNormed, secStr, mapRegion, deltaVolume, deltaProp, bFact, numHBonds, hetContAveNum, hetContMinDist,
             interContAveNum, interContMinDist, sitesContAveNum, sitesContMinDist, uniprotAcc, invertedFlag,
             transcriptRgdId, variantTranscriptId, proteinStatus, oAA1, oAA2, pph2Class, pph2Prob, pph2Fpr, pph2Tpr,
-            pph2Fdr, msav, transv, cpg, minDjxn, pfamHit, idPmax, idPsnp, idQmin, codPos);
+            pph2Fdr, msav, transv, cpg, minDjxn, pfamHit, idPmax, idPsnp, idQmin, codPos));
 
 
         String vartrSql = "UPDATE "+vtTable+" SET polyphen_status=?,uniprot_id=?,protein_id=? "+
                 "WHERE variant_transcript_id=?";
         su = new SqlUpdate(this.getDataSource(), vartrSql, new int[]{Types.VARCHAR, Types.VARCHAR,
             Types.VARCHAR, Types.INTEGER});
-        su.update(prediction, uniprotAcc, proteinId, variantTranscriptId);
+        su.update(blanksToNull(prediction, uniprotAcc, proteinId, variantTranscriptId));
 
         return true;
     }
