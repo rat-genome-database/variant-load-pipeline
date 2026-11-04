@@ -250,7 +250,11 @@ public class VariantProcessingBase {
                 "INSERT INTO variant (\n" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY)\n" +
                         "VALUES (\n" +
-                        "  ?,?,?,?,?,?,?)",
+                        "  ?,?,?,?,?,?,?)\n" +
+                        // a variant present in two assemblies shares one row here, keyed only on rgd_id,
+                        // so the concurrent per-assembly loaders both try to insert it; whichever wins,
+                        // the row is identical, so the loser skips instead of aborting its whole batch
+                        "ON CONFLICT (RGD_ID) DO NOTHING",
                 new int[]{Types.INTEGER,Types.VARCHAR,Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,Types.INTEGER}, 10000);
         sql1.compile();
         for( VariantMapData v: mapsData) {
@@ -265,7 +269,8 @@ public class VariantProcessingBase {
                 "INSERT INTO variant_map_data (\n" +
                         " RGD_ID,CHROMOSOME,START_POS,END_POS,PADDING_BASE,GENIC_STATUS,MAP_KEY)\n" +
                         "VALUES (\n" +
-                        " ?,?,?,?,?,?,?)",
+                        " ?,?,?,?,?,?,?)\n" +
+                        "ON CONFLICT (RGD_ID, MAP_KEY) DO NOTHING",
                 new int[]{Types.INTEGER,Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR,Types.VARCHAR, Types.INTEGER}, 10000);
         sql2.compile();
         for( VariantMapData v: mapsData) {
@@ -321,7 +326,8 @@ public class VariantProcessingBase {
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant (" +
                         " RGD_ID,REF_NUC, VARIANT_TYPE, VAR_NUC, RS_ID, CLINVAR_ID, SPECIES_TYPE_KEY) " +
-                        "VALUES (?,?,?,?,?,?,?)",
+                        "VALUES (?,?,?,?,?,?,?) " +
+                        "ON CONFLICT (RGD_ID) DO NOTHING",
                 new int[]{Types.INTEGER,Types.VARCHAR,Types.VARCHAR, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,Types.INTEGER});
         sql1.compile();
         sql1.update(v.getId(), nullIfEmpty(v.getReferenceNucleotide()), nullIfEmpty(v.getVariantType()), nullIfEmpty(v.getVariantNucleotide()), nullIfEmpty(v.getRsId()), nullIfEmpty(v.getClinvarId()), v.getSpeciesTypeKey());
@@ -331,7 +337,8 @@ public class VariantProcessingBase {
         SqlUpdate sql2 = new SqlUpdate(this.getVariantDataSource(),
                 "INSERT INTO variant_map_data (" +
                         " RGD_ID,CHROMOSOME,START_POS,END_POS,PADDING_BASE,GENIC_STATUS,MAP_KEY) " +
-                        "VALUES (?,?,?,?,?,?,?)",
+                        "VALUES (?,?,?,?,?,?,?) " +
+                        "ON CONFLICT (RGD_ID, MAP_KEY) DO NOTHING",
                 new int[]{Types.INTEGER,Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR,Types.VARCHAR, Types.INTEGER});
         sql2.compile();
         sql2.update(v.getId(), nullIfEmpty(v.getChromosome()), v.getStartPos(), v.getEndPos(), nullIfEmpty(v.getPaddingBase()), nullIfEmpty(v.getGenicStatus()), v.getMapKey());
@@ -418,11 +425,13 @@ public class VariantProcessingBase {
 
     public void insertVariantRgdIds2(List<VariantMapData> vmds) throws Exception{
         BatchSqlUpdate sql = new BatchSqlUpdate(DataSourceFactory.getInstance().getCarpeNovoDataSource(),
-                "INSERT INTO VARIANT_RGD_IDS (rgd_id) select ? where not exists(select * from VARIANT_RGD_IDS where rgd_id=?)", new int[]{Types.INTEGER,Types.INTEGER},5000);
+                // was "select ? where not exists(...)", which is check-then-insert and so still loses
+                // the race when both per-assembly loaders reach the same shared rgd_id at once
+                "INSERT INTO VARIANT_RGD_IDS (rgd_id) VALUES (?) ON CONFLICT (RGD_ID) DO NOTHING", new int[]{Types.INTEGER},5000);
         sql.compile();
         for (VariantMapData vmd : vmds){
             long rgdId = vmd.getId();
-            sql.update((int)rgdId,(int)rgdId);
+            sql.update((int)rgdId);
         }
         sql.flush();
     }
@@ -431,7 +440,7 @@ public class VariantProcessingBase {
     public void insertVariantRgdId(VariantMapData v)  throws Exception{
 
         SqlUpdate sql1 = new SqlUpdate(this.getVariantDataSource(),
-                "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?)",
+                "INSERT INTO VARIANT_RGD_IDS (RGD_ID) VALUES (?) ON CONFLICT (RGD_ID) DO NOTHING",
                 new int[]{Types.INTEGER});
         sql1.compile();
         sql1.update((int)v.getId());
